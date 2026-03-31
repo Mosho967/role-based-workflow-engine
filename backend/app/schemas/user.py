@@ -1,18 +1,17 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 
 
 class UserCreate(BaseModel):
     username: str
     email: EmailStr
     password: str
-    role: str
 
     @field_validator("username")
     @classmethod
-    def validate_username(cls, v):
+    def validate_username(cls, v: str) -> str:
         if len(v) < 3:
             raise ValueError("Username must be at least 3 characters")
         if len(v) > 50:
@@ -21,7 +20,7 @@ class UserCreate(BaseModel):
 
     @field_validator("password")
     @classmethod
-    def validate_password(cls, v):
+    def validate_password(cls, v: str) -> str:
         if len(v) < 8:
             raise ValueError("Password must be at least 8 characters")
         if not any(c.isupper() for c in v):
@@ -32,24 +31,16 @@ class UserCreate(BaseModel):
             raise ValueError("Password must contain at least one special character (!@#$%^&*)")
         return v
 
-    @field_validator("role")
-    @classmethod
-    def validate_role(cls, v):
-        allowed = {"admin", "user", "reviewer"}
-        if v not in allowed:
-            raise ValueError(f"Role must be one of: {', '.join(allowed)}")
-        return v
-
 
 class UserRead(BaseModel):
     id: uuid.UUID
     username: str
-    email: str
+    email: EmailStr
     role: str
     is_active: bool
     created_at: datetime
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserLogin(BaseModel):
