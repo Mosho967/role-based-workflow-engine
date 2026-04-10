@@ -1,4 +1,27 @@
-# Audit routes: read-only access to audit log entries
-from fastapi import APIRouter
+import uuid
+
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+
+from app.core.dependencies import get_current_user, get_db
+from app.models.audit_log import AuditLog
+from app.models.user import User
+from app.schemas.audit_log import AuditLogRead
+from app.services.task_service import get_task
 
 router = APIRouter(prefix="/audit", tags=["audit"])
+
+
+@router.get("/{task_id}", response_model=list[AuditLogRead])
+def get_audit_log(
+    task_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    get_task(db, task_id)
+    return (
+        db.query(AuditLog)
+        .filter(AuditLog.task_id == task_id)
+        .order_by(AuditLog.created_at.asc())
+        .all()
+    )
