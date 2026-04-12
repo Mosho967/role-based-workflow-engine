@@ -28,15 +28,10 @@ def execute_transition(
         Transition.workflow_id == task.workflow_id,
         Transition.from_state_id == task.current_state_id,
         Transition.to_state_id == to_state_id,
+        Transition.required_role == user_role,
     ).first()
 
     if not transition:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No valid transition exists from the current state to the requested state"
-        )
-
-    if transition.required_role != user_role:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"Your role '{user_role}' is not permitted to perform this transition"
