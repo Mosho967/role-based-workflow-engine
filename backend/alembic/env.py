@@ -6,13 +6,12 @@ from alembic import context
 from app.db.base import Base
 from app.core.config import settings
 
-# Import all models so Alembic can detect them
 import app.models.user  # noqa
-import app.models.workflow  # noqa
-import app.models.state  # noqa
-import app.models.transition  # noqa
-import app.models.task  # noqa
-import app.models.audit_log  # noqa
+import app.models.workflow  
+import app.models.state  
+import app.models.transition  
+import app.models.task  
+import app.models.audit_log  
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
