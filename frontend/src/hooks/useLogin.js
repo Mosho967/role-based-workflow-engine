@@ -22,7 +22,8 @@ export function useLogin() {
     } catch (err) {
       const detail = err.response?.data?.detail
       if (Array.isArray(detail)) {
-        setError(detail.map((e) => e.msg.replace(/^Value error, /i, '')).join(', '))
+        const msg = detail.map((e) => e.msg.replace(/^Value error, /i, '')).join(', ')
+        setError(msg.toLowerCase().includes('email') ? 'Please enter a valid email address' : msg)
       } else {
         setError(detail || 'Login failed')
       }
