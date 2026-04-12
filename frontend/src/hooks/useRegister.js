@@ -18,7 +18,12 @@ export function useRegister() {
       await registerUser(username, email, password)
       navigate('/login')
     } catch (err) {
-      setError(err.response?.data?.detail || 'Registration failed')
+      const detail = err.response?.data?.detail
+      if (Array.isArray(detail)) {
+        setError(detail.map((e) => e.msg.replace(/^Value error, /i, '')).join(', '))
+      } else {
+        setError(detail || 'Registration failed')
+      }
     } finally {
       setLoading(false)
     }
