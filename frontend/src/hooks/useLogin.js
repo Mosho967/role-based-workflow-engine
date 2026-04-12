@@ -20,7 +20,12 @@ export function useLogin() {
       setRole(payload.role)
       navigate(payload.role === 'admin' ? '/admin' : '/dashboard')
     } catch (err) {
-      setError(err.response?.data?.detail || 'Login failed')
+      const detail = err.response?.data?.detail
+      if (Array.isArray(detail)) {
+        setError(detail.map((e) => e.msg.replace(/^Value error, /i, '')).join(', '))
+      } else {
+        setError(detail || 'Login failed')
+      }
     } finally {
       setLoading(false)
     }
