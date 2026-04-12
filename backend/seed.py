@@ -7,6 +7,11 @@ Usage (from backend/ with venv activated):
 from app.core.security import hash_password
 from app.db.session import SessionLocal
 from app.models.user import User
+import app.models.workflow  # noqa
+import app.models.state  # noqa
+import app.models.transition  # noqa
+import app.models.task  # noqa
+import app.models.audit_log  # noqa
 
 ADMIN_USERNAME = "admin"
 ADMIN_EMAIL = "admin@example.com"
