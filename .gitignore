@@ -29,3 +29,6 @@ Thumbs.db
 # Pytest
 .pytest_cache/
 .coverage
+
+# Personal notes
+notes/
