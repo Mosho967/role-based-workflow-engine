@@ -22,3 +22,10 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# Test database
+*.db
+
+# Pytest
+.pytest_cache/
+.coverage
