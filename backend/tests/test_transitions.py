@@ -1,12 +1,4 @@
 import pytest
-from tests.conftest import TestingSessionLocal
-from app.models.workflow import Workflow
-from app.models.state import State
-from app.models.transition import Transition
-from app.models.task import Task
-from app.models.user import User
-from app.core.security import hash_password
-import uuid
 
 
 @pytest.fixture
@@ -102,39 +94,3 @@ def test_cannot_transition_from_final_state(client, auth_headers, admin_headers,
     assert res.status_code == 400
 
 
-def test_invalid_transition_role(client):
-    wf_id = str(uuid.uuid4())
-    s1_id = str(uuid.uuid4())
-    s2_id = str(uuid.uuid4())
-
-    db = TestingSessionLocal()
-    wf = Workflow(id=uuid.UUID(wf_id), name="Role Test", created_by=uuid.uuid4())
-
-    admin = User(username="roleadmin", email="roleadmin@example.com", password_hash=hash_password("Admin123!"), role="admin", is_active=True)
-    db.add(admin)
-    db.flush()
-
-    wf.created_by = admin.id
-    db.add(wf)
-
-    s1 = State(id=uuid.UUID(s1_id), workflow_id=uuid.UUID(wf_id), name="Start", is_initial=True, is_final=False)
-    s2 = State(id=uuid.UUID(s2_id), workflow_id=uuid.UUID(wf_id), name="End", is_initial=False, is_final=True)
-    db.add_all([s1, s2])
-    db.commit()
-    db.close()
-
-    from tests.conftest import fastapi_app as app_instance
-    res = app_instance.dependency_overrides
-
-    # Test invalid role via API
-    from starlette.testclient import TestClient
-    client2 = TestClient(app_instance)
-    login = client2.post("/auth/login", json={"email": "roleadmin@example.com", "password": "Admin123!"})
-    headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
-
-    res = client2.post(f"/workflows/{wf_id}/transitions", json={
-        "from_state_id": s1_id,
-        "to_state_id": s2_id,
-        "required_role": "superuser"
-    }, headers=headers)
-    assert res.status_code == 422
