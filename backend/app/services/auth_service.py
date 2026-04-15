@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.core.security import create_access_token, hash_password, verify_password
 from app.models.user import User
-from app.schemas.user import UserCreate
+from app.schemas.user import UserAdminCreate, UserCreate
 
 
 def register_user(db: Session, data: UserCreate) -> User:
@@ -23,6 +23,30 @@ def register_user(db: Session, data: UserCreate) -> User:
         email=data.email,
         password_hash=hash_password(data.password),
         role="user",
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+def create_user_as_admin(db: Session, data: UserAdminCreate) -> User:
+    if db.query(User).filter(User.email == data.email).first():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered"
+        )
+    if db.query(User).filter(User.username == data.username).first():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username already taken"
+        )
+
+    user = User(
+        username=data.username,
+        email=data.email,
+        password_hash=hash_password(data.password),
+        role=data.role,
     )
     db.add(user)
     db.commit()
