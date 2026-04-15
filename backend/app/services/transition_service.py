@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.models.audit_log import AuditLog
 from app.models.task import Task
 from app.models.transition import Transition
-from app.services.task_service import get_task
+from app.services.task_service import assert_task_access, get_task
 
 
 def execute_transition(
@@ -17,6 +17,7 @@ def execute_transition(
     user_role: str,
 ) -> Task:
     task = get_task(db, task_id)
+    assert_task_access(task, user_id, user_role)
 
     if task.current_state.is_final:
         raise HTTPException(

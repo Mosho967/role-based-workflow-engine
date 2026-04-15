@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.core.dependencies import get_current_user, get_db
 from app.models.user import User
 from app.schemas.task import TaskCreate, TaskRead
-from app.services.task_service import create_task, get_task, list_tasks
+from app.services.task_service import assert_task_access, create_task, get_task, list_tasks
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -34,4 +34,6 @@ def get_one(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return get_task(db, task_id)
+    task = get_task(db, task_id)
+    assert_task_access(task, current_user.id, current_user.role)
+    return task

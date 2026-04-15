@@ -7,7 +7,7 @@ from app.core.dependencies import get_current_user, get_db
 from app.models.audit_log import AuditLog
 from app.models.user import User
 from app.schemas.audit_log import AuditLogRead
-from app.services.task_service import get_task
+from app.services.task_service import assert_task_access, get_task
 
 router = APIRouter(prefix="/audit", tags=["audit"])
 
@@ -18,7 +18,8 @@ def get_audit_log(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    get_task(db, task_id)
+    task = get_task(db, task_id)
+    assert_task_access(task, current_user.id, current_user.role)
     return (
         db.query(AuditLog)
         .filter(AuditLog.task_id == task_id)
