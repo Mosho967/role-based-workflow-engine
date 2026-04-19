@@ -65,6 +65,10 @@ export function useDashboard() {
       setTasks((prev) => [...prev, task])
       setNewTaskTitle("")
       setSelectedWorkflowId("")
+      if (!states[selectedWorkflowId]) {
+        const wfStates = await fetchStates(selectedWorkflowId)
+        setStates(prev => ({ ...prev, [selectedWorkflowId]: wfStates }))
+      }
     } catch (err) {
       const detail = err.response?.data?.detail
       if (Array.isArray(detail)) {
