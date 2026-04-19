@@ -148,6 +148,13 @@ export function useAdmin() {
     return workflows.find(w => w.id === workflowId)?.name || workflowId
   }
 
+  function getStateNameForAuditLog(taskId, stateId) {
+    if (!stateId) return "—"
+    const task = tasks.find(t => t.id === taskId)
+    if (!task) return stateId.slice(0, 8) + "…"
+    return statesMap[task.workflow_id]?.find(s => s.id === stateId)?.name || stateId.slice(0, 8) + "…"
+  }
+
   function getAvailableAdminTransitions(workflowId, currentStateId) {
     return (transitionsMap[workflowId] || []).filter(
       t => t.from_state_id === currentStateId && t.required_role === "admin"
@@ -169,6 +176,7 @@ export function useAdmin() {
     handleTriggerTransition,
     getStateName,
     getStateNameFromMap,
+    getStateNameForAuditLog,
     getWorkflowName,
     getAvailableAdminTransitions,
   }
