@@ -19,3 +19,8 @@ export async function fetchAuditLogsForTask(taskId) {
   const res = await client.get(`/audit/${taskId}`)
   return res.data
 }
+
+export async function deactivateUser(userId) {
+  const res = await client.patch(`/users/${userId}/deactivate`)
+  return res.data
+}

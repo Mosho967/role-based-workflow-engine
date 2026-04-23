@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { fetchAllAuditLogs, fetchUsers, createUser as apiCreateUser } from "../api/admin"
+import { fetchAllAuditLogs, fetchUsers, createUser as apiCreateUser, deactivateUser as apiDeactivateUser } from "../api/admin"
 import { fetchWorkflows, createWorkflow as apiCreateWorkflow, fetchStates, fetchTransitions, createState as apiCreateState, createTransition as apiCreateTransition, triggerTransition } from "../api/workflows"
 import { fetchTasks } from "../api/tasks"
 
@@ -127,6 +127,15 @@ export function useAdmin() {
     }
   }
 
+  async function handleDeactivateUser(userId) {
+    try {
+      const updated = await apiDeactivateUser(userId)
+      setUsers(prev => prev.map(u => u.id === updated.id ? updated : u))
+    } catch (err) {
+      setError(err.response?.data?.detail || "Failed to deactivate user")
+    }
+  }
+
   async function handleTriggerTransition(taskId, toStateId) {
     try {
       const updated = await triggerTransition(taskId, toStateId)
@@ -173,6 +182,7 @@ export function useAdmin() {
     handleCreateState,
     handleCreateTransition,
     handleCreateUser,
+    handleDeactivateUser,
     handleTriggerTransition,
     getStateName,
     getStateNameFromMap,

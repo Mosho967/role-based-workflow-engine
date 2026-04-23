@@ -8,6 +8,7 @@ const TABS = ["Workflow Builder", "Users", "Tasks", "Audit Logs"]
 export default function AdminPanel() {
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState("Workflow Builder")
+  const [confirmDeactivate, setConfirmDeactivate] = useState(null)
   const {
     workflows, selectedWorkflow, states, transitions,
     tasks, users, auditLogs, error,
@@ -20,6 +21,7 @@ export default function AdminPanel() {
     handleCreateState,
     handleCreateTransition,
     handleCreateUser,
+    handleDeactivateUser,
     handleTriggerTransition,
     getStateName,
     getStateNameFromMap,
@@ -268,6 +270,7 @@ export default function AdminPanel() {
                       <th className="pb-2">Email</th>
                       <th className="pb-2">Role</th>
                       <th className="pb-2">Active</th>
+                      <th className="pb-2"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -281,6 +284,16 @@ export default function AdminPanel() {
                           </span>
                         </td>
                         <td className="py-2">{u.is_active ? "Yes" : "No"}</td>
+                        <td className="py-2">
+                          {u.is_active && (
+                            <button
+                              onClick={() => setConfirmDeactivate(u)}
+                              className="text-xs text-red-500 hover:underline"
+                            >
+                              Deactivate
+                            </button>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -360,6 +373,33 @@ export default function AdminPanel() {
         )}
 
       </div>
+
+      {confirmDeactivate && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">Warning</h3>
+            <p className="text-sm text-gray-600 mb-1">
+              You are about to deactivate <span className="font-medium">{confirmDeactivate.username}</span>.
+            </p>
+            <p className="text-sm text-red-600 mb-6">This will block them from logging in. Are you sure?</p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setConfirmDeactivate(null)}
+                className="px-4 py-2 text-sm rounded border hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { handleDeactivateUser(confirmDeactivate.id); setConfirmDeactivate(null) }}
+                className="px-4 py-2 text-sm rounded bg-red-600 text-white hover:bg-red-700"
+              >
+                Deactivate
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }
