@@ -2,8 +2,10 @@ import { useState } from "react"
 import { useAdmin } from "../../hooks/useAdmin"
 import { clearAuth } from "../../services/authStorage"
 import { useNavigate } from "react-router-dom"
+import logo from "../../assets/logo.png"
 
 const TABS = ["Workflow Builder", "Users", "Tasks", "Audit Logs"]
+const PRESET_STATES = ["Submitted", "Under Review", "In Progress", "Approved", "Rejected", "Pending", "Completed", "Cancelled"]
 
 export default function AdminPanel() {
   const navigate = useNavigate()
@@ -36,11 +38,16 @@ export default function AdminPanel() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-green-50">
       {/* Top bar */}
-      <div className="bg-white shadow px-6 py-4 flex justify-between items-center">
-        <h1 className="text-xl font-bold">Admin Panel</h1>
-        <button onClick={handleLogout} className="text-sm text-red-500 hover:underline">
+      <div className="bg-white shadow px-6 py-4 flex justify-between items-center border-b-2 border-green-600">
+        <div className="flex items-center gap-2">
+          <img src={logo} alt="logo" className="w-8 h-8 object-contain" />
+          <h1 className="text-xl font-bold text-green-700">Cogflow</h1>
+          <span className="text-gray-400 font-light">|</span>
+          <span className="text-sm font-medium text-gray-500">Admin</span>
+        </div>
+        <button onClick={handleLogout} className="text-sm font-bold text-green-900 hover:underline">
           Logout
         </button>
       </div>
@@ -52,7 +59,7 @@ export default function AdminPanel() {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === tab ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === tab ? "border-green-600 text-green-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}
             >
               {tab}
             </button>
@@ -79,7 +86,7 @@ export default function AdminPanel() {
                 />
                 <button
                   onClick={handleCreateWorkflow}
-                  className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700"
+                  className="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700"
                 >
                   Create Workflow
                 </button>
@@ -93,7 +100,7 @@ export default function AdminPanel() {
                       <button
                         key={wf.id}
                         onClick={() => handleSelectWorkflow(wf)}
-                        className={`px-3 py-1 rounded text-sm border ${selectedWorkflow?.id === wf.id ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-700 hover:bg-gray-50"}`}
+                        className={`px-3 py-1 rounded text-sm border ${selectedWorkflow?.id === wf.id ? "bg-green-600 text-white border-green-600" : "bg-white text-gray-700 hover:bg-gray-50"}`}
                       >
                         {wf.name}
                       </button>
@@ -109,10 +116,18 @@ export default function AdminPanel() {
                   <div>
                     <p className="text-sm font-medium mb-2">Add State</p>
                     <div className="flex flex-wrap gap-2 items-center">
+                      <select
+                        className="border rounded px-3 py-2 text-sm"
+                        value=""
+                        onChange={e => { if (e.target.value) setNewState(prev => ({ ...prev, name: e.target.value })) }}
+                      >
+                        <option value="">Quick select...</option>
+                        {PRESET_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
                       <input
                         type="text"
                         className="border rounded px-3 py-2 text-sm"
-                        placeholder="State name"
+                        placeholder="Or type custom name"
                         value={newState.name}
                         onChange={e => setNewState(prev => ({ ...prev, name: e.target.value }))}
                       />
@@ -254,7 +269,7 @@ export default function AdminPanel() {
               </select>
               <button
                 onClick={handleCreateUser}
-                className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700"
+                className="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700"
               >
                 Create {newUser.role.charAt(0).toUpperCase() + newUser.role.slice(1)}
               </button>
@@ -279,7 +294,7 @@ export default function AdminPanel() {
                         <td className="py-2">{u.username}</td>
                         <td className="py-2">{u.email}</td>
                         <td className="py-2">
-                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${u.role === "admin" ? "bg-red-100 text-red-700" : u.role === "reviewer" ? "bg-yellow-100 text-yellow-700" : "bg-blue-100 text-blue-700"}`}>
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${u.role === "admin" ? "bg-red-100 text-red-700" : u.role === "reviewer" ? "bg-yellow-100 text-yellow-700" : "bg-green-100 text-green-700"}`}>
                             {u.role}
                           </span>
                         </td>

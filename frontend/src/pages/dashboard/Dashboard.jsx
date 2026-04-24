@@ -1,5 +1,6 @@
 import { useEffect } from "react"
 import { useDashboard } from "../../hooks/useDashboard"
+import logo from "../../assets/logo.png"
 
 export default function Dashboard() {
   const {
@@ -14,6 +15,7 @@ export default function Dashboard() {
     loading,
     handleSubmitTask,
     handleTriggerTransition,
+    role,
     handleLogout,
     getStateName,
     getWorkflowName,
@@ -31,10 +33,15 @@ export default function Dashboard() {
     <div className="min-h-screen bg-green-50">
       {/* Top bar */}
       <div className="bg-white shadow px-6 py-4 flex justify-between items-center border-b-2 border-green-600">
-        <h1 className="text-xl font-bold text-green-700">Workflow Engine</h1>
+        <div className="flex items-center gap-2">
+          <img src={logo} alt="logo" className="w-8 h-8 object-contain" />
+          <h1 className="text-xl font-bold text-green-700">Cogflow</h1>
+          <span className="text-gray-400 font-light">|</span>
+          <span className="text-sm font-medium text-gray-500 capitalize">{role}</span>
+        </div>
         <button
           onClick={handleLogout}
-          className="text-sm text-red-500 hover:underline"
+          className="text-sm font-bold text-green-900 hover:underline"
         >
           Logout
         </button>
@@ -45,7 +52,7 @@ export default function Dashboard() {
 
         {/* Submit New Task */}
         <div className="bg-white rounded shadow p-6">
-          <h2 className="text-lg font-semibold mb-4">Submit New Task</h2>
+          <h2 className="text-lg font-semibold mb-4">New Task</h2>
           <form onSubmit={handleSubmitTask} className="space-y-3">
             <div>
               <label className="block text-sm font-medium mb-1">Workflow</label>
@@ -120,7 +127,7 @@ export default function Dashboard() {
         {/* My Activity */}
         {tasks.length > 0 && (
           <div className="bg-white rounded shadow p-6">
-            <h2 className="text-lg font-semibold mb-4">My Activity</h2>
+            <h2 className="text-lg font-semibold mb-4">Activity</h2>
             {tasks.every(t => !(auditLogs[t.id]?.length)) ? (
               <p className="text-gray-500 text-sm">No activity yet.</p>
             ) : (
