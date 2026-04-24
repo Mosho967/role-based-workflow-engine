@@ -87,3 +87,18 @@ Change these after first login.
 cd backend
 pytest tests/
 ```
+
+## Screenshots
+
+![Welcome](docs/screenshots/welcome.png)
+
+<table>
+  <tr>
+    <td><img src="docs/screenshots/login.png"/></td>
+    <td><img src="docs/screenshots/workflow_builder.png"/></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/user_dashboard.png"/></td>
+    <td><img src="docs/screenshots/admin_audit_logs.png"/></td>
+  </tr>
+</table>
