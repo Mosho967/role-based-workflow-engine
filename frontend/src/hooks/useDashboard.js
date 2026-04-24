@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { fetchTasks, createTask } from "../api/tasks"
 import { fetchWorkflows, fetchStates, fetchTransitions, triggerTransition } from "../api/workflows"
+import { fetchAuditLogsForTask } from "../api/admin"
 import { clearAuth, getRole } from "../services/authStorage"
 
 export function useDashboard() {
@@ -12,6 +13,7 @@ export function useDashboard() {
   const [selectedWorkflowId, setSelectedWorkflowId] = useState("")
   const [newTaskTitle, setNewTaskTitle] = useState("")
   const [error, setError] = useState("")
+  const [auditLogs, setAuditLogs] = useState({})
   const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
   const role = getRole()
@@ -36,6 +38,15 @@ export function useDashboard() {
         })
       )
       setStates(stateMap)
+
+      const logMap = {}
+      await Promise.all(
+        taskData.map(async (task) => {
+          const logs = await fetchAuditLogsForTask(task.id)
+          logMap[task.id] = logs
+        })
+      )
+      setAuditLogs(logMap)
     } catch (err) {
       setError("Failed to load data")
     } finally {
@@ -115,6 +126,7 @@ export function useDashboard() {
   return {
     tasks,
     workflows,
+    auditLogs,
     selectedWorkflowId,
     setSelectedWorkflowId,
     newTaskTitle,

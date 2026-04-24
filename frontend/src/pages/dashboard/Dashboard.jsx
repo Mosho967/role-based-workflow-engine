@@ -5,6 +5,7 @@ export default function Dashboard() {
   const {
     tasks,
     workflows,
+    auditLogs,
     selectedWorkflowId,
     setSelectedWorkflowId,
     newTaskTitle,
@@ -27,10 +28,10 @@ export default function Dashboard() {
   if (loading) return <div className="p-8">Loading...</div>
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-green-50">
       {/* Top bar */}
-      <div className="bg-white shadow px-6 py-4 flex justify-between items-center">
-        <h1 className="text-xl font-bold">Workflow Engine</h1>
+      <div className="bg-white shadow px-6 py-4 flex justify-between items-center border-b-2 border-green-600">
+        <h1 className="text-xl font-bold text-green-700">Workflow Engine</h1>
         <button
           onClick={handleLogout}
           className="text-sm text-red-500 hover:underline"
@@ -72,7 +73,7 @@ export default function Dashboard() {
             </div>
             <button
               type="submit"
-              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
             >
               Submit Task
             </button>
@@ -116,6 +117,39 @@ export default function Dashboard() {
             </div>
           )}
         </div>
+        {/* My Activity */}
+        {tasks.length > 0 && (
+          <div className="bg-white rounded shadow p-6">
+            <h2 className="text-lg font-semibold mb-4">My Activity</h2>
+            {tasks.every(t => !(auditLogs[t.id]?.length)) ? (
+              <p className="text-gray-500 text-sm">No activity yet.</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-gray-500 border-b">
+                    <th className="pb-2">Task</th>
+                    <th className="pb-2">From</th>
+                    <th className="pb-2">To</th>
+                    <th className="pb-2">When</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tasks.flatMap(task =>
+                    (auditLogs[task.id] || []).map(log => (
+                      <tr key={log.id} className="border-b last:border-0">
+                        <td className="py-2">{task.title}</td>
+                        <td className="py-2">{log.from_state_id ? getStateName(task.workflow_id, log.from_state_id) : "—"}</td>
+                        <td className="py-2">{getStateName(task.workflow_id, log.to_state_id)}</td>
+                        <td className="py-2 text-xs text-gray-400">{new Date(log.created_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
+
       </div>
     </div>
   )
