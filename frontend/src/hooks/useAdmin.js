@@ -166,7 +166,7 @@ export function useAdmin() {
 
   function getAvailableAdminTransitions(workflowId, currentStateId) {
     return (transitionsMap[workflowId] || []).filter(
-      t => t.from_state_id === currentStateId && t.required_role === "admin"
+      t => t.from_state_id === currentStateId
     )
   }
 
