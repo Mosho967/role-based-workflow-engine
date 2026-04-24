@@ -38,7 +38,7 @@ export default function AdminPanel() {
   }
 
   return (
-    <div className="min-h-screen bg-green-50">
+    <div className="min-h-screen bg-green-100">
       {/* Top bar */}
       <div className="bg-white shadow px-6 py-4 flex justify-between items-center border-b-2 border-green-600">
         <div className="flex items-center gap-2">
@@ -303,7 +303,7 @@ export default function AdminPanel() {
                           {u.is_active && (
                             <button
                               onClick={() => setConfirmDeactivate(u)}
-                              className="text-xs text-red-500 hover:underline"
+                              className="text-xs font-bold text-green-700 hover:underline"
                             >
                               Deactivate
                             </button>
@@ -328,26 +328,40 @@ export default function AdminPanel() {
               <div className="space-y-3">
                 {tasks.map(task => {
                   const available = getAvailableAdminTransitions(task.workflow_id, task.current_state_id)
+                  const adminTransitions = available.filter(t => t.required_role === "admin")
+                  const waitingFor = [...new Set(available.filter(t => t.required_role !== "admin").map(t => t.required_role))]
+                  const stateName = getStateNameFromMap(task.workflow_id, task.current_state_id)
+                  const stateKey = stateName.toLowerCase()
+                  const stateBadge = /approved|completed|done/.test(stateKey)
+                    ? "bg-green-100 text-green-700"
+                    : /rejected|cancelled|denied/.test(stateKey)
+                    ? "bg-red-100 text-red-700"
+                    : "bg-blue-100 text-blue-700"
                   return (
-                    <div key={task.id} className="border rounded p-4">
-                      <p className="font-medium">{task.title}</p>
+                    <div key={task.id} className="border rounded-2xl p-4">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="font-medium">{task.title}</p>
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${stateBadge}`}>
+                          {stateName}
+                        </span>
+                      </div>
                       <p className="text-sm text-gray-500">Workflow: {getWorkflowName(task.workflow_id)}</p>
-                      <p className="text-sm text-gray-500">
-                        State: {getStateNameFromMap(task.workflow_id, task.current_state_id)}
-                      </p>
-                      {available.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {available.map(t => (
-                            <button
-                              key={t.id}
-                              onClick={() => handleTriggerTransition(task.id, t.to_state_id)}
-                              className="text-sm bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
-                            >
-                              Move to {getStateNameFromMap(task.workflow_id, t.to_state_id)}
-                            </button>
-                          ))}
-                        </div>
-                      )}
+                      <div className="mt-2 flex flex-wrap gap-2 items-center">
+                        {adminTransitions.map(t => (
+                          <button
+                            key={t.id}
+                            onClick={() => handleTriggerTransition(task.id, t.to_state_id)}
+                            className="text-sm bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
+                          >
+                            Move to {getStateNameFromMap(task.workflow_id, t.to_state_id)}
+                          </button>
+                        ))}
+                        {waitingFor.map(role => (
+                          <span key={role} className="text-xs font-medium px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">
+                            Waiting for {role}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   )
                 })}

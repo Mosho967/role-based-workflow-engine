@@ -1,6 +1,6 @@
-# Role-Based Workflow Engine
+# Cogflow
 
-A configurable workflow engine that models business approval processes as state machines. Admins define workflows with states and transitions, users submit tasks that move through those states, and every transition is recorded in an audit log.
+A role-based workflow engine that models business approval processes as state machines. Admins define workflows with states and transitions, users submit tasks that move through those states, and every transition is recorded in an audit log.
 
 Built with FastAPI, PostgreSQL, and React.
 
@@ -90,11 +90,11 @@ pytest tests/
 
 ## Screenshots
 
-![Welcome](docs/screenshots/welcome.png)
+![Welcome](frontend/src/assets/welcome_page.png)
 
 <table>
   <tr>
-    <td><img src="docs/screenshots/login.png"/></td>
+    <td><img src="frontend/src/assets/login_page.png"/></td>
     <td><img src="docs/screenshots/workflow_builder.png"/></td>
   </tr>
   <tr>
