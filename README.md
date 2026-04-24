@@ -1,7 +1,17 @@
 # Role-Based Workflow Engine
 
-A configurable workflow engine that models business approval processes as state machines.
+A configurable workflow engine that models business approval processes as state machines. Admins define workflows with states and transitions, users submit tasks that move through those states, and every transition is recorded in an audit log.
+
 Built with FastAPI, PostgreSQL, and React.
+
+## Features
+
+- JWT authentication with role-based access control (admin, reviewer, user)
+- Admin panel to build workflows: define states, transitions, and required roles
+- Users submit tasks that are automatically placed in the initial state
+- Role-enforced state transitions — only authorised roles can move a task forward
+- Full audit log of every state transition
+- Admin user management: create and deactivate accounts
 
 ## Project Structure
 
@@ -19,9 +29,23 @@ role-based-workflow-engine/
 - **Frontend**: React 18, Vite, Tailwind CSS, Axios
 - **Testing**: Pytest
 
+## Prerequisites
+
+- Python 3.12+
+- Node.js 18+
+- PostgreSQL (or Docker to run it in a container)
+
 ## Getting Started
 
-### Backend
+### 1. Start the database
+
+```bash
+docker run --name workflow-db -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=workflow -p 5432:5432 -d postgres
+```
+
+Or point `DATABASE_URL` in `.env` at an existing PostgreSQL instance.
+
+### 2. Backend
 
 ```bash
 cd backend
@@ -30,13 +54,36 @@ source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 cp .env.example .env       # fill in your values
 alembic upgrade head
+python seed.py             # creates the first admin account
 uvicorn app.main:app --reload
 ```
 
-### Frontend
+API docs available at: `http://localhost:8000/docs`
+
+### 3. Frontend
 
 ```bash
 cd frontend
 npm install
 npm run dev
+```
+
+App runs at: `http://localhost:5173`
+
+## Default Admin Credentials
+
+Created by `seed.py`:
+
+| Field    | Value             |
+|----------|-------------------|
+| Email    | admin@example.com |
+| Password | changeme123       |
+
+Change these after first login.
+
+## Running Tests
+
+```bash
+cd backend
+pytest tests/
 ```
