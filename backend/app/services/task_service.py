@@ -36,7 +36,7 @@ def create_task(db: Session, data: TaskCreate, user_id: uuid.UUID) -> Task:
 
 
 def assert_task_access(task: Task, user_id: uuid.UUID, role: str) -> None:
-    if role != "admin" and task.created_by != user_id:
+    if role not in ("admin", "reviewer") and task.created_by != user_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You do not have permission to access this task"
@@ -54,6 +54,6 @@ def get_task(db: Session, task_id: uuid.UUID) -> Task:
 
 
 def list_tasks(db: Session, user_id: uuid.UUID, role: str) -> list[Task]:
-    if role == "admin":
+    if role in ("admin", "reviewer"):
         return db.query(Task).all()
     return db.query(Task).filter(Task.created_by == user_id).all()
