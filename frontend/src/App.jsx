@@ -1,4 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
+import Splash from "./pages/Splash"
+import Welcome from "./pages/Welcome"
 import Login from "./pages/Login"
 import Register from "./pages/Register"
 import Dashboard from "./pages/dashboard/Dashboard"
@@ -29,7 +31,10 @@ export default function App() {
           path="/admin"
           element={<AdminRoute><AdminPanel /></AdminRoute>}
         />
-        <Route path="*" element={<Navigate to="/login" />} />
+        <Route path="/" element={<Welcome />} />
+        <Route path="/welcome" element={<Welcome />} />
+        <Route path="/splash" element={<Splash />} />
+        <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </BrowserRouter>
   )
