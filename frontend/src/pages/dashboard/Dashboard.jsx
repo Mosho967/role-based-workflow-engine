@@ -128,12 +128,15 @@ export default function Dashboard() {
                     : /rejected|cancelled|denied/.test(stateKey)
                     ? "bg-red-100 text-red-700"
                     : "bg-blue-100 text-blue-700"
+                  const hasTransitions = (auditLogs[task.id] || []).length > 0
+                  const badgeLabel = hasTransitions ? stateName : "Submitted"
+                  const badgeClass = hasTransitions ? stateBadge : "bg-blue-100 text-blue-700"
                   return (
                     <div key={task.id} className="border rounded-2xl p-4">
                       <div className="flex items-center justify-between mb-1">
                         <p className="font-medium">{task.title}</p>
-                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${stateBadge}`}>
-                          {stateName}
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${badgeClass}`}>
+                          {badgeLabel}
                         </span>
                       </div>
                       <p className="text-sm text-gray-500">
