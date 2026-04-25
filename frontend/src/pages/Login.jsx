@@ -19,11 +19,16 @@ export default function Login() {
   const [visible, setVisible] = useState(false)
   const [slide, setSlide] = useState(0)
   const [fading, setFading] = useState(false)
+  const [shakeKey, setShakeKey] = useState(0)
 
   useEffect(() => {
     const t = setTimeout(() => setVisible(true), 50)
     return () => clearTimeout(t)
   }, [])
+
+  useEffect(() => {
+    if (error) setShakeKey(k => k + 1)
+  }, [error])
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -38,6 +43,10 @@ export default function Login() {
 
   const current = SLIDES[slide]
 
+  const emailError = error && /account is deactivated|valid email/i.test(error) ? error : null
+  const passwordError = error && !emailError ? error : null
+  const generalError = null
+
   return (
     <div
       className="min-h-screen flex transition-opacity duration-700"
@@ -45,7 +54,7 @@ export default function Login() {
     >
       {/* Left — login form */}
       <div className="flex-1 flex items-center justify-center bg-white px-8">
-        <div className="w-full max-w-sm">
+        <div key={shakeKey} className="w-full max-w-sm" style={shakeKey > 0 ? { animation: "shake 0.5s ease" } : {}}>
           <div className="flex items-center gap-2 mb-8">
             <img src={logo} alt="logo" className="w-8 h-8 object-contain" />
             <span className="text-xl font-bold text-green-700">Cogflow</span>
@@ -59,24 +68,26 @@ export default function Login() {
               <label className="block text-sm font-medium mb-1">Email</label>
               <input
                 type="email"
-                className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                className={`w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 ${emailError ? "border-red-400" : ""}`}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
               />
+              {emailError && <p className="text-red-500 text-xs mt-1">{emailError}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Password</label>
               <input
                 type="password"
-                className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                className={`w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 ${passwordError ? "border-red-400" : ""}`}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
+              {passwordError && <p className="text-red-500 text-xs mt-1">{passwordError}</p>}
             </div>
 
-            {error && <p className="text-red-500 text-sm">{error}</p>}
+            {generalError && <p className="text-red-500 text-sm">{generalError}</p>}
 
             <button
               type="submit"
@@ -105,9 +116,8 @@ export default function Login() {
           <h2 className="text-2xl font-bold text-white mb-1">Track tasks. Control progress.</h2>
           <p className="text-green-300 text-sm mb-6">One platform for your entire approval workflow.</p>
 
-          {/* Slide */}
           <div
-            className="rounded-2xl overflow-hidden border border-white/20 shadow-2xl transition-opacity duration-400"
+            className="rounded-2xl overflow-hidden border border-white/20 shadow-2xl"
             style={{
               background: "rgba(255,255,255,0.08)",
               backdropFilter: "blur(8px)",
@@ -115,24 +125,19 @@ export default function Login() {
               transition: "opacity 0.4s ease"
             }}
           >
-            <img
-              src={current.img}
-              alt={current.label}
-              className="w-full object-cover"
-            />
+            <img src={current.img} alt={current.label} className="w-full object-cover" />
             <div className="px-4 py-3 text-left">
               <p className="text-white text-sm font-semibold">{current.label}</p>
               <p className="text-green-300 text-xs mt-0.5">{current.desc}</p>
             </div>
           </div>
 
-          {/* Dots */}
           <div className="flex justify-center gap-2 mt-4">
             {SLIDES.map((_, i) => (
               <button
                 key={i}
                 onClick={() => { setFading(true); setTimeout(() => { setSlide(i); setFading(false) }, 400) }}
-                className={`w-2 h-2 rounded-full transition-all ${i === slide ? "bg-white w-4" : "bg-white/40"}`}
+                className={`h-2 rounded-full transition-all ${i === slide ? "bg-white w-4" : "bg-white/40 w-2"}`}
               />
             ))}
           </div>

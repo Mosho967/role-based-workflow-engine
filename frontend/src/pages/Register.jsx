@@ -11,6 +11,12 @@ export default function Register() {
     return () => clearTimeout(t)
   }, [])
 
+  const parts = error ? error.split(", ") : []
+  const usernameError = parts.filter(p => /username/i.test(p)).join(", ") || null
+  const emailError = parts.filter(p => /email/i.test(p)).join(", ") || null
+  const passwordError = parts.filter(p => /password/i.test(p)).join(", ") || null
+  const generalError = parts.filter(p => !/username|email|password/i.test(p)).join(", ") || null
+
   return (
     <div
       className="min-h-screen flex items-center justify-center bg-green-50 transition-opacity duration-700"
@@ -24,35 +30,36 @@ export default function Register() {
             <label className="block text-sm font-medium mb-1">Username</label>
             <input
               type="text"
-              className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+              className={`w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 ${usernameError ? "border-red-400" : ""}`}
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
             />
+            {usernameError && <p className="text-red-500 text-xs mt-1">{usernameError}</p>}
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Email</label>
             <input
               type="email"
-              className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+              className={`w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 ${emailError ? "border-red-400" : ""}`}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
             />
+            {emailError && <p className="text-red-500 text-xs mt-1">{emailError}</p>}
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Password</label>
             <input
               type="password"
-              className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+              className={`w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 ${passwordError ? "border-red-400" : ""}`}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
             />
+            {passwordError && <p className="text-red-500 text-xs mt-1">{passwordError}</p>}
           </div>
-          {error && (
-            <p className="text-red-500 text-sm">{error}</p>
-          )}
+          {generalError && <p className="text-red-500 text-sm">{generalError}</p>}
           <button
             type="submit"
             disabled={loading}
