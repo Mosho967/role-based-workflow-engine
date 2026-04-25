@@ -12,6 +12,7 @@ from app.services.workflow_service import (
     add_state,
     add_transition,
     create_workflow,
+    delete_transition,
     list_states,
     list_transitions,
     list_workflows,
@@ -83,3 +84,13 @@ def get_transitions(
     current_user: User = Depends(get_current_user),
 ):
     return list_transitions(db, workflow_id)
+
+
+@router.delete("/{workflow_id}/transitions/{transition_id}", status_code=204)
+def remove_transition(
+    workflow_id: uuid.UUID,
+    transition_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("admin")),
+):
+    delete_transition(db, workflow_id, transition_id)

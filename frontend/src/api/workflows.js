@@ -42,3 +42,7 @@ export async function triggerTransition(taskId, toStateId) {
   const res = await client.post("/transitions", { task_id: taskId, to_state_id: toStateId })
   return res.data
 }
+
+export async function deleteTransition(workflowId, transitionId) {
+  await client.delete(`/workflows/${workflowId}/transitions/${transitionId}`)
+}

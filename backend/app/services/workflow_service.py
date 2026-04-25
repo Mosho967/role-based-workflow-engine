@@ -108,3 +108,18 @@ def add_transition(
 def list_transitions(db: Session, workflow_id: uuid.UUID) -> list[Transition]:
     get_workflow(db, workflow_id)
     return db.query(Transition).filter(Transition.workflow_id == workflow_id).all()
+
+
+def delete_transition(db: Session, workflow_id: uuid.UUID, transition_id: uuid.UUID) -> None:
+    get_workflow(db, workflow_id)
+    transition = db.query(Transition).filter(
+        Transition.id == transition_id,
+        Transition.workflow_id == workflow_id,
+    ).first()
+    if not transition:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Transition not found"
+        )
+    db.delete(transition)
+    db.commit()

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { fetchAllAuditLogs, fetchUsers, createUser as apiCreateUser, deactivateUser as apiDeactivateUser } from "../api/admin"
-import { fetchWorkflows, createWorkflow as apiCreateWorkflow, fetchStates, fetchTransitions, createState as apiCreateState, createTransition as apiCreateTransition, triggerTransition } from "../api/workflows"
+import { fetchWorkflows, createWorkflow as apiCreateWorkflow, fetchStates, fetchTransitions, createState as apiCreateState, createTransition as apiCreateTransition, deleteTransition as apiDeleteTransition, triggerTransition } from "../api/workflows"
 import { fetchTasks } from "../api/tasks"
 
 export function useAdmin() {
@@ -136,6 +136,16 @@ export function useAdmin() {
     }
   }
 
+  async function handleDeleteTransition(transitionId) {
+    if (!selectedWorkflow) return
+    try {
+      await apiDeleteTransition(selectedWorkflow.id, transitionId)
+      setTransitions(prev => prev.filter(t => t.id !== transitionId))
+    } catch (err) {
+      setError(err.response?.data?.detail || "Failed to delete transition")
+    }
+  }
+
   async function handleTriggerTransition(taskId, toStateId) {
     try {
       const updated = await triggerTransition(taskId, toStateId)
@@ -181,6 +191,7 @@ export function useAdmin() {
     handleCreateWorkflow,
     handleCreateState,
     handleCreateTransition,
+    handleDeleteTransition,
     handleCreateUser,
     handleDeactivateUser,
     handleTriggerTransition,

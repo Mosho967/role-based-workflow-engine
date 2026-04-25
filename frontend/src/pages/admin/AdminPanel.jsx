@@ -25,6 +25,7 @@ export default function AdminPanel() {
     handleCreateWorkflow,
     handleCreateState,
     handleCreateTransition,
+    handleDeleteTransition,
     handleCreateUser,
     handleDeactivateUser,
     handleTriggerTransition,
@@ -224,8 +225,14 @@ export default function AdminPanel() {
                       {transitions.length > 0 && (
                         <div className="mt-2 flex flex-wrap gap-2">
                           {transitions.map(t => (
-                            <span key={t.id} className="text-xs bg-green-50 border border-green-200 text-green-800 rounded-full px-3 py-1">
+                            <span key={t.id} className="inline-flex items-center gap-1 text-xs bg-green-50 border border-green-200 text-green-800 rounded-full px-3 py-1">
                               {getStateName(t.from_state_id)} → {getStateName(t.to_state_id)} · {t.required_role}
+                              <button
+                                onClick={() => handleDeleteTransition(t.id)}
+                                className="ml-1 bg-green-800 text-white rounded-full w-4 h-4 flex items-center justify-center hover:bg-red-500 transition-colors"
+                                style={{ fontSize: "13px", lineHeight: 1, paddingBottom: "1px" }}
+                                title="Delete transition"
+                              >×</button>
                             </span>
                           ))}
                         </div>
