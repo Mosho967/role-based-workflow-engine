@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom"
 import logo from "../../assets/logo.png"
 
 const TABS = ["Workflow Builder", "Users", "Tasks", "Audit Logs"]
-const PRESET_STATES = ["Submitted", "Under Review", "In Progress", "Approved", "Rejected", "Pending", "Completed", "Cancelled"]
+const PRESET_STATES = ["Under Review", "In Progress", "Approved", "Rejected", "Changes Requested", "Completed", "Cancelled"]
 
 export default function AdminPanel() {
   const navigate = useNavigate()
@@ -189,7 +189,15 @@ export default function AdminPanel() {
                         <select
                           className="border rounded px-3 py-2 text-sm"
                           value={newTransition.to_state_id}
-                          onChange={e => setNewTransition(prev => ({ ...prev, to_state_id: e.target.value }))}
+                          onChange={e => {
+                            const toId = e.target.value
+                            const toState = states.find(s => s.id === toId)
+                            setNewTransition(prev => ({
+                              ...prev,
+                              to_state_id: toId,
+                              required_role: toState && /approved|rejected|completed|changes requested/i.test(toState.name) ? "reviewer" : prev.required_role
+                            }))
+                          }}
                         >
                           <option value="">To state</option>
                           {states.map(s => (
