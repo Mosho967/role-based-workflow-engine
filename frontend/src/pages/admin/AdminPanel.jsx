@@ -11,6 +11,9 @@ export default function AdminPanel() {
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState("Workflow Builder")
   const [confirmDeactivate, setConfirmDeactivate] = useState(null)
+  const [showAllTasks, setShowAllTasks] = useState(false)
+  const [showAllLogs, setShowAllLogs] = useState(false)
+  const LIMIT = 5
   const {
     workflows, selectedWorkflow, states, transitions,
     tasks, users, auditLogs, error,
@@ -86,7 +89,7 @@ export default function AdminPanel() {
                 />
                 <button
                   onClick={handleCreateWorkflow}
-                  className="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700"
+                  className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm hover:bg-green-700 hover:shadow-md transition-all"
                 >
                   Create Workflow
                 </button>
@@ -100,7 +103,7 @@ export default function AdminPanel() {
                       <button
                         key={wf.id}
                         onClick={() => handleSelectWorkflow(wf)}
-                        className={`px-3 py-1 rounded text-sm border ${selectedWorkflow?.id === wf.id ? "bg-green-600 text-white border-green-600" : "bg-white text-gray-700 hover:bg-gray-50"}`}
+                        className={`px-3 py-1 rounded-full text-sm font-medium border transition-all ${selectedWorkflow?.id === wf.id ? "bg-green-600 text-white border-green-600 shadow-sm" : "bg-white text-gray-600 hover:bg-green-50 hover:border-green-400"}`}
                       >
                         {wf.name}
                       </button>
@@ -149,7 +152,7 @@ export default function AdminPanel() {
                       </label>
                       <button
                         onClick={handleCreateState}
-                        className="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700"
+                        className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm hover:bg-green-700 hover:shadow-md transition-all"
                       >
                         Add State
                       </button>
@@ -158,7 +161,7 @@ export default function AdminPanel() {
                     {states.length > 0 && (
                       <div className="mt-2 flex flex-wrap gap-2">
                         {states.map(s => (
-                          <span key={s.id} className="text-xs bg-gray-100 border rounded px-2 py-1">
+                          <span key={s.id} className="text-xs bg-green-50 border border-green-200 text-green-800 rounded-full px-3 py-1">
                             {s.name}
                             {s.is_initial && " (initial)"}
                             {s.is_final && " (final)"}
@@ -204,18 +207,18 @@ export default function AdminPanel() {
                         </select>
                         <button
                           onClick={handleCreateTransition}
-                          className="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700"
+                          className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm hover:bg-green-700 hover:shadow-md transition-all"
                         >
                           Add Transition
                         </button>
                       </div>
 
                       {transitions.length > 0 && (
-                        <div className="mt-2 space-y-1">
+                        <div className="mt-2 flex flex-wrap gap-2">
                           {transitions.map(t => (
-                            <p key={t.id} className="text-xs text-gray-600">
-                              {getStateName(t.from_state_id)} → {getStateName(t.to_state_id)} (role: {t.required_role})
-                            </p>
+                            <span key={t.id} className="text-xs bg-green-50 border border-green-200 text-green-800 rounded-full px-3 py-1">
+                              {getStateName(t.from_state_id)} → {getStateName(t.to_state_id)} · {t.required_role}
+                            </span>
                           ))}
                         </div>
                       )}
@@ -269,9 +272,9 @@ export default function AdminPanel() {
               </select>
               <button
                 onClick={handleCreateUser}
-                className="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700"
+                className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm hover:bg-green-700 hover:shadow-md transition-all"
               >
-                Create {newUser.role.charAt(0).toUpperCase() + newUser.role.slice(1)}
+                Create
               </button>
             </div>
 
@@ -300,7 +303,7 @@ export default function AdminPanel() {
                         </td>
                         <td className="py-2">{u.is_active ? "Yes" : "No"}</td>
                         <td className="py-2">
-                          {u.is_active && (
+                          {u.is_active && u.role !== "admin" && (
                             <button
                               onClick={() => setConfirmDeactivate(u)}
                               className="text-xs font-bold text-green-700 hover:underline"
@@ -321,12 +324,19 @@ export default function AdminPanel() {
         {/* Tasks */}
         {activeTab === "Tasks" && (
           <div className="bg-white rounded shadow p-6">
-            <h2 className="text-lg font-semibold mb-4">All Tasks</h2>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold">All Tasks</h2>
+              {tasks.length > LIMIT && (
+                <button onClick={() => setShowAllTasks(prev => !prev)} className="text-sm text-green-600 hover:underline">
+                  {showAllTasks ? "Show less" : `View all ${tasks.length}`}
+                </button>
+              )}
+            </div>
             {tasks.length === 0 ? (
               <p className="text-gray-500 text-sm">No tasks in the system.</p>
             ) : (
               <div className="space-y-3">
-                {tasks.map(task => {
+                {(showAllTasks ? tasks : tasks.slice(0, LIMIT)).map(task => {
                   const available = getAvailableAdminTransitions(task.workflow_id, task.current_state_id)
                   const adminTransitions = available.filter(t => t.required_role === "admin")
                   const waitingFor = [...new Set(available.filter(t => t.required_role !== "admin").map(t => t.required_role))]
@@ -373,7 +383,14 @@ export default function AdminPanel() {
         {/* Audit Logs */}
         {activeTab === "Audit Logs" && (
           <div className="bg-white rounded shadow p-6">
-            <h2 className="text-lg font-semibold mb-4">Audit Logs</h2>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold">Audit Logs</h2>
+              {auditLogs.length > LIMIT && (
+                <button onClick={() => setShowAllLogs(prev => !prev)} className="text-sm text-green-600 hover:underline">
+                  {showAllLogs ? "Show less" : `View all ${auditLogs.length}`}
+                </button>
+              )}
+            </div>
             {auditLogs.length === 0 ? (
               <p className="text-gray-500 text-sm">No audit logs yet.</p>
             ) : (
@@ -387,7 +404,7 @@ export default function AdminPanel() {
                   </tr>
                 </thead>
                 <tbody>
-                  {auditLogs.map(log => (
+                  {(showAllLogs ? auditLogs : auditLogs.slice(0, LIMIT)).map(log => (
                     <tr key={log.id} className="border-b last:border-0">
                       <td className="py-2">{tasks.find(t => t.id === log.task_id)?.title || log.task_id.slice(0, 8) + "…"}</td>
                       <td className="py-2">{getStateNameForAuditLog(log.task_id, log.from_state_id)}</td>
