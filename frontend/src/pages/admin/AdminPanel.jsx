@@ -13,6 +13,12 @@ export default function AdminPanel() {
   const [confirmDeactivate, setConfirmDeactivate] = useState(null)
   const [showAllTasks, setShowAllTasks] = useState(false)
   const [showAllLogs, setShowAllLogs] = useState(false)
+  const [transitionWarning, setTransitionWarning] = useState(null)
+  const [transitionBlock, setTransitionBlock] = useState(null)
+  const [warningShakeKey, setWarningShakeKey] = useState(0)
+  const [suspiciousTransitions, setSuspiciousTransitions] = useState([])
+  const [showBuilderHelp, setShowBuilderHelp] = useState(false)
+  const [showUsersHelp, setShowUsersHelp] = useState(false)
   const LIMIT = 5
   const {
     workflows, selectedWorkflow, states, transitions,
@@ -78,7 +84,30 @@ export default function AdminPanel() {
         {activeTab === "Workflow Builder" && (
           <div className="space-y-8">
             <div className="bg-white rounded shadow p-6">
-              <h2 className="text-lg font-semibold mb-4">Workflow Builder</h2>
+              <div className="flex items-center gap-2 mb-4">
+                <h2 className="text-lg font-semibold">Workflow Builder</h2>
+                <button
+                  onClick={() => setShowBuilderHelp(p => !p)}
+                  className="w-5 h-5 rounded-full bg-gray-100 text-gray-500 text-xs font-bold hover:bg-green-100 hover:text-green-700 transition-colors flex items-center justify-center"
+                  title="How it works"
+                >?</button>
+              </div>
+
+              <div
+                style={{
+                  maxHeight: showBuilderHelp ? "300px" : "0px",
+                  opacity: showBuilderHelp ? 1 : 0,
+                  overflow: "hidden",
+                  transition: "max-height 0.35s ease, opacity 0.3s ease",
+                }}
+              >
+                <div className="mb-4 bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-gray-700 space-y-2">
+                  <p><span className="font-semibold text-green-800">States</span> are the stages a task moves through (e.g. Under Review, Approved). Every workflow needs at least one <span className="bg-blue-100 text-blue-600 rounded-full px-1.5 py-0.5 text-[10px] font-medium">start</span> state and one <span className="bg-red-100 text-red-500 rounded-full px-1.5 py-0.5 text-[10px] font-medium">end</span> state.</p>
+                  <p><span className="font-semibold text-green-800">Transitions</span> define which state a task can move to, and which role is allowed to trigger it.</p>
+                  <p><span className="font-semibold text-green-800">Roles:</span> <span className="font-medium">user</span> submits tasks · <span className="font-medium">reviewer</span> approves or rejects · <span className="font-medium">admin</span> manages the workflow</p>
+                  <p className="text-xs text-gray-400">Tip: assign Approve/Reject transitions to <span className="font-medium">reviewer</span> so the reviewer role has meaningful actions.</p>
+                </div>
+              </div>
 
               <div className="flex gap-2 mb-4">
                 <input
@@ -123,7 +152,12 @@ export default function AdminPanel() {
                       <select
                         className="border rounded px-3 py-2 text-sm"
                         value=""
-                        onChange={e => { if (e.target.value) setNewState(prev => ({ ...prev, name: e.target.value })) }}
+                        onChange={e => {
+                          if (!e.target.value) return
+                          const name = e.target.value
+                          const isFinal = /approved|rejected|completed|cancelled/i.test(name)
+                          setNewState(prev => ({ ...prev, name, is_initial: false, is_final: isFinal }))
+                        }}
                       >
                         <option value="">Quick select...</option>
                         {PRESET_STATES.map(s => <option key={s} value={s}>{s}</option>)}
@@ -135,22 +169,28 @@ export default function AdminPanel() {
                         value={newState.name}
                         onChange={e => setNewState(prev => ({ ...prev, name: e.target.value }))}
                       />
-                      <label className="flex items-center gap-1 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={newState.is_initial}
-                          onChange={e => setNewState(prev => ({ ...prev, is_initial: e.target.checked }))}
-                        />
-                        Initial
-                      </label>
-                      <label className="flex items-center gap-1 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={newState.is_final}
-                          onChange={e => setNewState(prev => ({ ...prev, is_final: e.target.checked }))}
-                        />
-                        Final
-                      </label>
+                      <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
+                        {[
+                          { label: "None", is_initial: false, is_final: false },
+                          { label: "Start", is_initial: true,  is_final: false },
+                          { label: "End",   is_initial: false, is_final: true  },
+                        ].map(opt => {
+                          const active = newState.is_initial === opt.is_initial && newState.is_final === opt.is_final
+                          const colour = active
+                            ? opt.label === "Start" ? "bg-blue-500 text-white"
+                            : opt.label === "End"   ? "bg-red-500 text-white"
+                            : "bg-green-600 text-white"
+                            : "bg-white text-gray-500 hover:bg-gray-50"
+                          return (
+                            <button
+                              key={opt.label}
+                              type="button"
+                              onClick={() => setNewState(prev => ({ ...prev, is_initial: opt.is_initial, is_final: opt.is_final }))}
+                              className={`px-3 py-2 transition-colors ${colour}`}
+                            >{opt.label}</button>
+                          )
+                        })}
+                      </div>
                       <button
                         onClick={handleCreateState}
                         className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm hover:bg-green-700 hover:shadow-md transition-all"
@@ -162,10 +202,10 @@ export default function AdminPanel() {
                     {states.length > 0 && (
                       <div className="mt-2 flex flex-wrap gap-2">
                         {states.map(s => (
-                          <span key={s.id} className="text-xs bg-green-50 border border-green-200 text-green-800 rounded-full px-3 py-1">
+                          <span key={s.id} className="inline-flex items-center gap-1.5 text-xs bg-green-50 border border-green-200 text-green-800 rounded-full px-3 py-1">
                             {s.name}
-                            {s.is_initial && " (initial)"}
-                            {s.is_final && " (final)"}
+                            {s.is_initial && <span className="bg-blue-100 text-blue-600 rounded-full px-1.5 py-0.5 text-[10px] font-medium">start</span>}
+                            {s.is_final && <span className="bg-red-100 text-red-500 rounded-full px-1.5 py-0.5 text-[10px] font-medium">end</span>}
                           </span>
                         ))}
                       </div>
@@ -215,17 +255,94 @@ export default function AdminPanel() {
                           <option value="admin">admin</option>
                         </select>
                         <button
-                          onClick={handleCreateTransition}
+                          onClick={() => {
+                            const from = states.find(s => s.id === newTransition.from_state_id)
+                            const to = states.find(s => s.id === newTransition.to_state_id)
+                            const role = newTransition.required_role
+                            const isTerminal = to && /approved|rejected|completed/i.test(to.name)
+                            let block = null
+                            let warning = null
+                            const isDuplicate = transitions.some(t =>
+                              t.from_state_id === newTransition.from_state_id &&
+                              t.to_state_id === newTransition.to_state_id &&
+                              t.required_role === newTransition.required_role
+                            )
+                            if (isDuplicate) {
+                              block = "Transition already exists."
+                            } else if (newTransition.from_state_id === newTransition.to_state_id) {
+                              block = "A transition cannot go from a state back to itself — the task would not move anywhere."
+                            } else if (from?.is_final) {
+                              block = "This starts from a final (end) state. Tasks in a final state cannot be moved, so this transition will never fire."
+                            } else if (from?.is_initial && to?.is_final) {
+                              warning = "This goes directly from the start state to an end state, skipping any review steps. Tasks will jump straight to a terminal state."
+                            } else if (to?.is_initial) {
+                              warning = "This loops back to the initial state. Tasks would restart from the beginning, which is not typical for an approval workflow."
+                            } else if (role === "user" && isTerminal) {
+                              warning = "This lets a regular user approve or reject their own task. Approvals are usually handled by reviewer or admin."
+                            } else if (role === "admin" && isTerminal) {
+                              warning = "Approve/Reject decisions are usually assigned to reviewer, not admin. This means reviewer will have no meaningful action in this workflow."
+                            }
+                            if (block) {
+                              setTransitionBlock(block)
+                              setTransitionWarning(null)
+                              setWarningShakeKey(k => k + 1)
+                            } else if (warning) {
+                              setTransitionWarning(warning)
+                              setTransitionBlock(null)
+                              setWarningShakeKey(k => k + 1)
+                            } else {
+                              handleCreateTransition()
+                            }
+                          }}
                           className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm hover:bg-green-700 hover:shadow-md transition-all"
                         >
                           Add Transition
                         </button>
                       </div>
 
+                      {transitionBlock && (
+                        <div key={warningShakeKey} className="mt-3 bg-red-50 border border-red-300 rounded-lg px-4 py-3 text-sm text-red-800" style={{ animation: "shake 0.5s ease" }}>
+                          <p className="font-medium mb-1">Cannot add this transition</p>
+                          <p className="mb-3">{transitionBlock}</p>
+                          <button
+                            onClick={() => setTransitionBlock(null)}
+                            className="text-red-700 px-3 py-1 rounded text-xs font-medium hover:underline"
+                          >Dismiss</button>
+                        </div>
+                      )}
+
+                      {transitionWarning && (
+                        <div key={warningShakeKey} className="mt-3 bg-yellow-50 border border-yellow-300 rounded-lg px-4 py-3 text-sm text-yellow-800" style={{ animation: "shake 0.5s ease" }}>
+                          <p className="font-medium mb-1">Are you sure?</p>
+                          <p className="mb-3">{transitionWarning}</p>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                setSuspiciousTransitions(prev => [...prev, {
+                                  from: newTransition.from_state_id,
+                                  to: newTransition.to_state_id,
+                                  role: newTransition.required_role,
+                                }])
+                                handleCreateTransition()
+                                setTransitionWarning(null)
+                              }}
+                              className="bg-yellow-600 text-white px-3 py-1 rounded text-xs font-medium hover:bg-yellow-700"
+                            >Add anyway</button>
+                            <button
+                              onClick={() => setTransitionWarning(null)}
+                              className="text-yellow-700 px-3 py-1 rounded text-xs font-medium hover:underline"
+                            >Cancel</button>
+                          </div>
+                        </div>
+                      )}
+
                       {transitions.length > 0 && (
                         <div className="mt-2 flex flex-wrap gap-2">
-                          {transitions.map(t => (
-                            <span key={t.id} className="inline-flex items-center gap-1 text-xs bg-green-50 border border-green-200 text-green-800 rounded-full px-3 py-1">
+                          {transitions.map(t => {
+                            const isSuspicious = suspiciousTransitions.some(s => s.from === t.from_state_id && s.to === t.to_state_id && s.role === t.required_role)
+                            return (
+                            <span key={t.id} className={`inline-flex items-center gap-1 text-xs rounded-full px-3 py-1 ${isSuspicious ? "bg-yellow-50 border border-yellow-300 text-yellow-800" : "bg-green-50 border border-green-200 text-green-800"}`}>
+                              {isSuspicious && <span title="Added despite a warning">⚠️</span>}
                               {getStateName(t.from_state_id)} → {getStateName(t.to_state_id)} · {t.required_role}
                               <button
                                 onClick={() => handleDeleteTransition(t.id)}
@@ -234,7 +351,8 @@ export default function AdminPanel() {
                                 title="Delete transition"
                               >×</button>
                             </span>
-                          ))}
+                          )
+                          })}
                         </div>
                       )}
                     </div>
@@ -248,7 +366,29 @@ export default function AdminPanel() {
         {/* Users */}
         {activeTab === "Users" && (
           <div className="bg-white rounded shadow p-6">
-            <h2 className="text-lg font-semibold mb-4">User Management</h2>
+            <div className="flex items-center gap-2 mb-4">
+              <h2 className="text-lg font-semibold">User Management</h2>
+              <button
+                onClick={() => setShowUsersHelp(p => !p)}
+                className="w-5 h-5 rounded-full bg-gray-100 text-gray-500 text-xs font-bold hover:bg-green-100 hover:text-green-700 transition-colors flex items-center justify-center"
+                title="How it works"
+              >?</button>
+            </div>
+
+            <div
+              style={{
+                maxHeight: showUsersHelp ? "200px" : "0px",
+                opacity: showUsersHelp ? 1 : 0,
+                overflow: "hidden",
+                transition: "max-height 0.35s ease, opacity 0.3s ease",
+              }}
+            >
+              <div className="mb-4 bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-gray-700 space-y-2">
+                <p><span className="font-semibold text-green-800">Users</span> are created by the admin and assigned a role on signup — they cannot self-register as reviewer or admin.</p>
+                <p><span className="font-semibold text-green-800">Roles:</span> <span className="font-medium">user</span> submits tasks · <span className="font-medium">reviewer</span> approves or rejects · <span className="font-medium">admin</span> manages everything</p>
+                <p className="text-xs text-gray-400">Tip: deactivating a user prevents them from logging in without deleting their history.</p>
+              </div>
+            </div>
 
             <p className="text-sm font-medium mb-2">Create New User</p>
             <div className="flex flex-wrap gap-2 mb-6 items-end">
