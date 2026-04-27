@@ -107,7 +107,12 @@ export function useAdmin() {
       setTransitions(prev => [...prev, t])
       setNewTransition({ from_state_id: "", to_state_id: "", required_role: "user" })
     } catch (err) {
-      setError(err.response?.data?.detail || "Failed to create transition")
+      const detail = err.response?.data?.detail
+      if (Array.isArray(detail)) {
+        setError(detail.map(e => e.msg.replace(/^Value error, /i, "")).join(", "))
+      } else {
+        setError(detail || "Failed to create transition")
+      }
     }
   }
 
