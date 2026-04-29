@@ -105,6 +105,7 @@ export default function AdminPanel() {
                   <p><span className="font-semibold text-green-800">States</span> are the stages a task moves through (e.g. Under Review, Approved). Every workflow needs at least one <span className="bg-blue-100 text-blue-600 rounded-full px-1.5 py-0.5 text-[10px] font-medium">start</span> state and one <span className="bg-red-100 text-red-500 rounded-full px-1.5 py-0.5 text-[10px] font-medium">end</span> state.</p>
                   <p><span className="font-semibold text-green-800">Transitions</span> define which state a task can move to, and which role is allowed to trigger it.</p>
                   <p><span className="font-semibold text-green-800">Roles:</span> <span className="font-medium">user</span> submits tasks · <span className="font-medium">reviewer</span> approves or rejects · <span className="font-medium">admin</span> manages the workflow</p>
+                  <p><span className="bg-orange-100 text-orange-600 rounded-full px-1.5 py-0.5 text-[10px] font-medium">stuck</span> <span className="text-gray-600">means a non-final state has no outgoing transitions — tasks that reach it will be unable to move. Add a transition out of it to resolve.</span></p>
                   <p className="text-xs text-gray-400">Tip: assign Approve/Reject transitions to <span className="font-medium">reviewer</span> so the reviewer role has meaningful actions.</p>
                 </div>
               </div>
@@ -201,13 +202,18 @@ export default function AdminPanel() {
 
                     {states.length > 0 && (
                       <div className="mt-2 flex flex-wrap gap-2">
-                        {states.map(s => (
-                          <span key={s.id} className="inline-flex items-center gap-1.5 text-xs bg-green-50 border border-green-200 text-green-800 rounded-full px-3 py-1">
-                            {s.name}
-                            {s.is_initial && <span className="bg-blue-100 text-blue-600 rounded-full px-1.5 py-0.5 text-[10px] font-medium">start</span>}
-                            {s.is_final && <span className="bg-red-100 text-red-500 rounded-full px-1.5 py-0.5 text-[10px] font-medium">end</span>}
-                          </span>
-                        ))}
+                        {states.map(s => {
+                          const hasOutgoing = transitions.some(t => t.from_state_id === s.id)
+                          const deadEnd = !s.is_final && !hasOutgoing
+                          return (
+                            <span key={s.id} className={`inline-flex items-center gap-1.5 text-xs rounded-full px-3 py-1 ${deadEnd ? "bg-orange-50 border border-orange-300 text-orange-800" : "bg-green-50 border border-green-200 text-green-800"}`}>
+                              {s.name}
+                              {s.is_initial && <span className="bg-blue-100 text-blue-600 rounded-full px-1.5 py-0.5 text-[10px] font-medium">start</span>}
+                              {s.is_final && <span className="bg-red-100 text-red-500 rounded-full px-1.5 py-0.5 text-[10px] font-medium">end</span>}
+                              {deadEnd && <span title="No outgoing transitions — tasks will get stuck here" className="bg-orange-100 text-orange-600 rounded-full px-1.5 py-0.5 text-[10px] font-medium">stuck</span>}
+                            </span>
+                          )
+                        })}
                       </div>
                     )}
                   </div>

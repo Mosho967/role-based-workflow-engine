@@ -95,10 +95,10 @@ pytest tests/
 <table>
   <tr>
     <td><img src="frontend/src/assets/login_page.png"/></td>
-    <td><img src="docs/screenshots/workflow_builder.png"/></td>
+    <td><img src="docs/screenshots/admin_workflow_builder.png"/></td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/user_dashboard.png"/></td>
+    <td><img src="docs/screenshots/new_user_dashboard.png"/></td>
     <td><img src="docs/screenshots/admin_audit_logs.png"/></td>
   </tr>
 </table>
