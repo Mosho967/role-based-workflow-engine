@@ -4,6 +4,21 @@ A role-based workflow engine that models business approval processes as state ma
 
 Built with FastAPI, PostgreSQL, and React.
 
+## Screenshots
+
+![Welcome](frontend/src/assets/welcome_page.png)
+
+<table>
+  <tr>
+    <td><img src="frontend/src/assets/login_page.png"/></td>
+    <td><img src="docs/screenshots/admin_workflow_builder.png"/></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/new_user_dashboard.png"/></td>
+    <td><img src="docs/screenshots/admin_audit_logs.png"/></td>
+  </tr>
+</table>
+
 ## Features
 
 - JWT authentication with role-based access control (admin, reviewer, user)
@@ -88,17 +103,22 @@ cd backend
 pytest tests/
 ```
 
-## Screenshots
+## Known Limitations
 
-![Welcome](frontend/src/assets/welcome_page.png)
+- Workflow misconfiguration can create dead-end states; builder highlights but does not fully prevent them.
+- Reviewer and user share a unified dashboard, limiting role-specific UX.
+- No real-time or in-app notifications; users must manually check task status.
 
-<table>
-  <tr>
-    <td><img src="frontend/src/assets/login_page.png"/></td>
-    <td><img src="docs/screenshots/admin_workflow_builder.png"/></td>
-  </tr>
-  <tr>
-    <td><img src="docs/screenshots/new_user_dashboard.png"/></td>
-    <td><img src="docs/screenshots/admin_audit_logs.png"/></td>
-  </tr>
-</table>
+## Design Decisions
+
+- Role-based access control enforced strictly at the backend; client cannot bypass it.
+- JWT stored in localStorage for simplicity; production should use secure httpOnly cookies.
+- Schema migrations managed with Alembic for versioning and rollback.
+
+## Roadmap
+
+- Deploy backend to Railway or Render and frontend to Vercel
+- Add real-time notifications (WebSockets or polling fallback)
+- Enforce strict workflow validation before task creation
+- Introduce multi-tenancy
+- Mobile client using React Native + Expo
