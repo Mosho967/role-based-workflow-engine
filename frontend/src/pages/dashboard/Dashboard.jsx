@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, Fragment } from "react"
 import { useDashboard } from "../../hooks/useDashboard"
 import logo from "../../assets/logo.png"
 
@@ -21,6 +21,7 @@ export default function Dashboard() {
     getWorkflowName,
     getAvailableTransitions,
     isStateFinal,
+    getOrderedStates,
     loadTransitions,
   } = useDashboard()
 
@@ -167,9 +168,40 @@ export default function Dashboard() {
                           {badgeLabel}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-gray-500 mb-3">
                         Workflow: {getWorkflowName(task.workflow_id)}
                       </p>
+                      {/* Progress stepper */}
+                      {(() => {
+                        const ordered = getOrderedStates(task.workflow_id)
+                        if (ordered.length < 2) return null
+                        const currentIndex = ordered.findIndex(s => s.id === task.current_state_id)
+                        return (
+                          <div className="flex items-start mb-3">
+                            {ordered.map((state, i) => {
+                              const isPast = i < currentIndex
+                              const isCurrent = i === currentIndex
+                              return (
+                                <Fragment key={state.id}>
+                                  <div className="flex flex-col items-center" style={{ minWidth: 0 }}>
+                                    <div className={`w-3 h-3 rounded-full border-2 flex-shrink-0 ${
+                                      isPast ? "bg-green-500 border-green-500" :
+                                      isCurrent ? "bg-green-600 border-green-600 ring-2 ring-green-200" :
+                                      "bg-white border-gray-300"
+                                    }`} />
+                                    <span className={`text-[10px] mt-1 text-center leading-tight max-w-[52px] truncate ${
+                                      isCurrent ? "text-green-700 font-semibold" : "text-gray-400"
+                                    }`}>{state.name}</span>
+                                  </div>
+                                  {i < ordered.length - 1 && (
+                                    <div className={`flex-1 h-0.5 mt-1.5 mx-0.5 ${isPast ? "bg-green-400" : "bg-gray-200"}`} />
+                                  )}
+                                </Fragment>
+                              )
+                            })}
+                          </div>
+                        )
+                      })()}
                       {available.length > 0 && (
                         <div className="mt-3 flex flex-wrap gap-2">
                           {available.map((t) => (

@@ -129,6 +129,26 @@ export function useDashboard() {
     return state ? state.is_final : false
   }
 
+  function getOrderedStates(workflowId) {
+    const wfStates = states[workflowId] || []
+    const wfTransitions = transitions[workflowId] || []
+    const initial = wfStates.find((s) => s.is_initial)
+    if (!initial) return wfStates
+    const ordered = [initial]
+    const visited = new Set([initial.id])
+    let current = initial
+    while (true) {
+      const next = wfTransitions.find((t) => t.from_state_id === current.id && !visited.has(t.to_state_id))
+      if (!next) break
+      const nextState = wfStates.find((s) => s.id === next.to_state_id)
+      if (!nextState) break
+      ordered.push(nextState)
+      visited.add(nextState.id)
+      current = nextState
+    }
+    return ordered
+  }
+
   return {
     tasks,
     workflows,
@@ -147,6 +167,7 @@ export function useDashboard() {
     getWorkflowName,
     getAvailableTransitions,
     isStateFinal,
+    getOrderedStates,
     loadTransitions,
   }
 }
