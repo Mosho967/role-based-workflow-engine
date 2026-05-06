@@ -15,6 +15,7 @@ def execute_transition(
     to_state_id: uuid.UUID,
     user_id: uuid.UUID,
     user_role: str,
+    comment: str | None = None,
 ) -> Task:
     task = get_task(db, task_id)
     assert_task_access(task, user_id, user_role)
@@ -47,6 +48,7 @@ def execute_transition(
         performed_by=user_id,
         from_state_id=previous_state_id,
         to_state_id=to_state_id,
+        comment=comment,
     )
     db.add(audit_log)
 

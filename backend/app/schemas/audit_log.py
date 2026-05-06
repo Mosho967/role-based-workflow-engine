@@ -10,6 +10,7 @@ class AuditLogRead(BaseModel):
     performed_by: uuid.UUID
     from_state_id: uuid.UUID | None
     to_state_id: uuid.UUID
+    comment: str | None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

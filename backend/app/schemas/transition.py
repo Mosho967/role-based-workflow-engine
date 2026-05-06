@@ -38,3 +38,4 @@ class TransitionRead(BaseModel):
 class TransitionRequest(BaseModel):
     task_id: uuid.UUID
     to_state_id: uuid.UUID
+    comment: str | None = None

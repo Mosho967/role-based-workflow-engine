@@ -22,4 +22,5 @@ def trigger_transition(
         to_state_id=data.to_state_id,
         user_id=current_user.id,
         user_role=current_user.role,
+        comment=data.comment,
     )
