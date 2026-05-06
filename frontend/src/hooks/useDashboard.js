@@ -12,6 +12,7 @@ export function useDashboard() {
   const [transitions, setTransitions] = useState({})
   const [selectedWorkflowId, setSelectedWorkflowId] = useState("")
   const [newTaskTitle, setNewTaskTitle] = useState("")
+  const [newTaskDescription, setNewTaskDescription] = useState("")
   const [error, setError] = useState("")
   const [auditLogs, setAuditLogs] = useState({})
   const [loading, setLoading] = useState(true)
@@ -21,6 +22,12 @@ export function useDashboard() {
   useEffect(() => {
     loadData()
   }, [])
+
+  useEffect(() => {
+    if (!error) return
+    const timer = setTimeout(() => setError(""), 4000)
+    return () => clearTimeout(timer)
+  }, [error])
 
   async function loadData() {
     setLoading(true)
@@ -72,9 +79,10 @@ export function useDashboard() {
       return
     }
     try {
-      const task = await createTask(newTaskTitle, selectedWorkflowId)
+      const task = await createTask(newTaskTitle, selectedWorkflowId, newTaskDescription)
       setTasks((prev) => [...prev, task])
       setNewTaskTitle("")
+      setNewTaskDescription("")
       setSelectedWorkflowId("")
       if (!states[selectedWorkflowId]) {
         const wfStates = await fetchStates(selectedWorkflowId)
@@ -117,6 +125,7 @@ export function useDashboard() {
   }
 
   function getAvailableTransitions(workflowId, currentStateId) {
+    if (isStateFinal(workflowId, currentStateId)) return []
     const wfTransitions = transitions[workflowId] || []
     return wfTransitions.filter(
       (t) => t.from_state_id === currentStateId && t.required_role === role
@@ -157,6 +166,8 @@ export function useDashboard() {
     setSelectedWorkflowId,
     newTaskTitle,
     setNewTaskTitle,
+    newTaskDescription,
+    setNewTaskDescription,
     error,
     loading,
     role,

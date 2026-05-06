@@ -5,7 +5,7 @@ export async function fetchTasks() {
   return res.data
 }
 
-export async function createTask(title, workflow_id) {
-  const res = await client.post("/tasks", { title, workflow_id })
+export async function createTask(title, workflow_id, description) {
+  const res = await client.post("/tasks", { title, workflow_id, description: description || null })
   return res.data
 }

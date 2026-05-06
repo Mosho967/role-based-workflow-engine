@@ -38,8 +38,8 @@ export async function createTransition(workflowId, fromStateId, toStateId, requi
   return res.data
 }
 
-export async function triggerTransition(taskId, toStateId) {
-  const res = await client.post("/transitions", { task_id: taskId, to_state_id: toStateId })
+export async function triggerTransition(taskId, toStateId, comment) {
+  const res = await client.post("/transitions", { task_id: taskId, to_state_id: toStateId, comment: comment || null })
   return res.data
 }
 
