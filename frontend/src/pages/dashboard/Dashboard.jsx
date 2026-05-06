@@ -20,6 +20,7 @@ export default function Dashboard() {
     getStateName,
     getWorkflowName,
     getAvailableTransitions,
+    isStateFinal,
     loadTransitions,
   } = useDashboard()
 
@@ -44,6 +45,11 @@ export default function Dashboard() {
   ).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
   const visibleLogs = showAllActivity ? allLogs : allLogs.slice(0, LIMIT)
 
+  const totalTasks = tasks.length
+  const completedTasks = tasks.filter(t => isStateFinal(t.workflow_id, t.current_state_id)).length
+  const activeTasks = totalTasks - completedTasks
+  const needsActionTasks = tasks.filter(t => getAvailableTransitions(t.workflow_id, t.current_state_id).length > 0).length
+
   if (loading) return <div className="p-8">Loading...</div>
 
   return (
@@ -66,6 +72,28 @@ export default function Dashboard() {
 
       <div className="max-w-3xl mx-auto py-8 px-4 space-y-8">
         {error && <p className="text-red-500 text-sm">{error}</p>}
+
+        {/* Stats Row */}
+        {totalTasks > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="bg-white rounded-2xl shadow p-4 text-center">
+              <p className="text-3xl font-bold text-gray-800">{totalTasks}</p>
+              <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide">Total Tasks</p>
+            </div>
+            <div className="bg-white rounded-2xl shadow p-4 text-center">
+              <p className="text-3xl font-bold text-blue-600">{activeTasks}</p>
+              <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide">Active</p>
+            </div>
+            <div className="bg-white rounded-2xl shadow p-4 text-center">
+              <p className="text-3xl font-bold text-green-600">{completedTasks}</p>
+              <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide">Completed</p>
+            </div>
+            <div className="bg-white rounded-2xl shadow p-4 text-center">
+              <p className="text-3xl font-bold text-amber-500">{needsActionTasks}</p>
+              <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide">Needs Action</p>
+            </div>
+          </div>
+        )}
 
         {/* Submit New Task */}
         <div className="bg-white rounded shadow p-6">

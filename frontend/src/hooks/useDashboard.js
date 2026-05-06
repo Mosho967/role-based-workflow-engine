@@ -123,6 +123,12 @@ export function useDashboard() {
     )
   }
 
+  function isStateFinal(workflowId, stateId) {
+    const wfStates = states[workflowId] || []
+    const state = wfStates.find((s) => s.id === stateId)
+    return state ? state.is_final : false
+  }
+
   return {
     tasks,
     workflows,
@@ -140,6 +146,7 @@ export function useDashboard() {
     getStateName,
     getWorkflowName,
     getAvailableTransitions,
+    isStateFinal,
     loadTransitions,
   }
 }
