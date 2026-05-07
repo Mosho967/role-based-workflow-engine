@@ -19,7 +19,11 @@ export function useLogin() {
       setToken(data.access_token)
       setRole(payload.role)
       const destination = payload.role === 'admin' ? '/admin' : payload.role === 'reviewer' ? '/reviewer' : '/dashboard'
-      navigate('/splash', { state: { destination } })
+      if (payload.role === 'user') {
+        navigate('/splash', { state: { destination } })
+      } else {
+        navigate(destination)
+      }
     } catch (err) {
       const detail = err.response?.data?.detail
       if (Array.isArray(detail)) {
