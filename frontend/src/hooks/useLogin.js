@@ -18,7 +18,8 @@ export function useLogin() {
       const payload = JSON.parse(atob(data.access_token.split('.')[1]))
       setToken(data.access_token)
       setRole(payload.role)
-      navigate('/splash', { state: { destination: payload.role === 'admin' ? '/admin' : '/dashboard' } })
+      const destination = payload.role === 'admin' ? '/admin' : payload.role === 'reviewer' ? '/reviewer' : '/dashboard'
+      navigate('/splash', { state: { destination } })
     } catch (err) {
       const detail = err.response?.data?.detail
       if (Array.isArray(detail)) {

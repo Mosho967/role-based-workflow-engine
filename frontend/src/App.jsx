@@ -6,6 +6,7 @@ import Login from "./pages/Login"
 import Register from "./pages/Register"
 import Dashboard from "./pages/dashboard/Dashboard"
 import AdminPanel from "./pages/admin/AdminPanel"
+import ReviewerDashboard from "./pages/reviewer/ReviewerDashboard"
 
 function PrivateRoute({ children }) {
   return localStorage.getItem("token") ? children : <Navigate to="/login" />
@@ -18,6 +19,13 @@ function AdminRoute({ children }) {
   return children
 }
 
+function ReviewerRoute({ children }) {
+  const role = localStorage.getItem("role")
+  if (!localStorage.getItem("token")) return <Navigate to="/login" />
+  if (role !== "reviewer") return <Navigate to="/dashboard" />
+  return children
+}
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -27,6 +35,10 @@ export default function App() {
         <Route
           path="/dashboard"
           element={<PrivateRoute><Dashboard /></PrivateRoute>}
+        />
+        <Route
+          path="/reviewer"
+          element={<ReviewerRoute><ReviewerDashboard /></ReviewerRoute>}
         />
         <Route
           path="/admin"
