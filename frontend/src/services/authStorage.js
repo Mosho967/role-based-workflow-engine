@@ -1,20 +1,20 @@
 export function getToken() {
-  return localStorage.getItem("token")
+  return sessionStorage.getItem("token")
 }
 
 export function setToken(token) {
-  localStorage.setItem("token", token)
+  sessionStorage.setItem("token", token)
 }
 
 export function getRole() {
-  return localStorage.getItem("role")
+  return sessionStorage.getItem("role")
 }
 
 export function setRole(role) {
-  localStorage.setItem("role", role)
+  sessionStorage.setItem("role", role)
 }
 
 export function clearAuth() {
-  localStorage.removeItem("token")
-  localStorage.removeItem("role")
+  sessionStorage.removeItem("token")
+  sessionStorage.removeItem("role")
 }
