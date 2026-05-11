@@ -1,12 +1,13 @@
 import { useEffect, useState, Fragment } from "react"
 import { useDashboard } from "../../hooks/useDashboard"
+import { useNavigate } from "react-router-dom"
 import logo from "../../assets/logo.png"
 
 function DonutChart({ completed, needsAction, waiting, total }) {
   const r = 35
   const C = 2 * Math.PI * r
   const segments = [
-    { label: "Completed", value: completed, color: "#22c55e" },
+    { label: "Closed", value: completed, color: "#22c55e" },
     { label: "Needs Action", value: needsAction, color: "#f59e0b" },
     { label: "Waiting", value: waiting, color: "#3b82f6" },
   ].filter((s) => s.value > 0)
@@ -36,7 +37,7 @@ function DonutChart({ completed, needsAction, waiting, total }) {
       </div>
       <div className="space-y-2.5 text-sm flex-1">
         <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-green-500" /><span className="text-gray-600">Completed</span></div>
+          <div className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-green-500" /><span className="text-gray-600">Closed</span></div>
           <span className="font-bold text-gray-800">{completed}</span>
         </div>
         <div className="flex items-center justify-between gap-4">
@@ -68,17 +69,22 @@ export default function Dashboard() {
     handleSubmitTask,
     handleTriggerTransition,
     role,
+    username,
     handleLogout,
     getStateName,
     getWorkflowName,
     getAvailableTransitions,
     isStateFinal,
     getOrderedStates,
+    handleDeleteTask,
     loadTransitions,
   } = useDashboard()
 
   const [showAllTasks, setShowAllTasks] = useState(false)
   const [showAllActivity, setShowAllActivity] = useState(false)
+  const [pending, setPending] = useState(null) // { taskId, toStateId, stateName }
+  const [pendingComment, setPendingComment] = useState("")
+  const navigate = useNavigate()
 
   const LIMIT = 5
 
@@ -115,6 +121,10 @@ export default function Dashboard() {
           <h1 className="text-xl font-bold text-green-700">Cogflow</h1>
           <span className="text-gray-400 font-light">|</span>
           <span className="text-sm font-medium text-gray-500 capitalize">{role}</span>
+          {username && <>
+            <span className="text-gray-400 font-light">|</span>
+            <span className="text-sm font-medium text-gray-500">Hi, {username}</span>
+          </>}
         </div>
         <button onClick={handleLogout} className="text-sm font-bold text-green-900 hover:underline">
           Logout
@@ -136,7 +146,7 @@ export default function Dashboard() {
           </div>
           <div className="bg-white rounded-2xl shadow p-4 text-center">
             <p className="text-3xl font-bold text-green-600">{completedTasks}</p>
-            <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide">Completed</p>
+            <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide">Closed</p>
           </div>
           <div className="bg-white rounded-2xl shadow p-4 text-center">
             <p className="text-3xl font-bold text-amber-500">{needsActionTasks}</p>
@@ -237,6 +247,10 @@ export default function Dashboard() {
                     const hasTransitions = (auditLogs[task.id] || []).length > 0
                     const badgeLabel = hasTransitions ? stateName : "Submitted"
                     const badgeClass = hasTransitions ? stateBadge : "bg-blue-100 text-blue-700"
+                    const lastReviewer = [...(auditLogs[task.id] || [])]
+                      .reverse()
+                      .find((l) => l.performed_by_username && l.from_state_id)
+                      ?.performed_by_username
                     return (
                       <div key={task.id} className="border rounded-2xl p-4">
                         <div className="flex items-center justify-between mb-1">
@@ -247,6 +261,7 @@ export default function Dashboard() {
                         </div>
                         <p className="text-xs text-gray-400 mb-1">
                           {getWorkflowName(task.workflow_id)}
+                          {lastReviewer && <span className="ml-2">· Reviewed by <span className="font-medium text-gray-500">{lastReviewer}</span></span>}
                         </p>
                         {task.description && (
                           <p className="text-xs text-gray-600 mb-3 leading-relaxed">{task.description}</p>
@@ -282,17 +297,54 @@ export default function Dashboard() {
                             </div>
                           )
                         })()}
-                        {available.length > 0 && (
+                        <button
+                          onClick={() => navigate(`/tasks/${task.id}`)}
+                          className="text-xs text-green-700 hover:underline mb-2 inline-block"
+                        >
+                          View full detail →
+                        </button>
+
+                        {available.length > 0 && pending?.taskId !== task.id && (
                           <div className="flex flex-wrap gap-2">
                             {available.map((t) => (
                               <button
                                 key={t.id}
-                                onClick={() => handleTriggerTransition(task.id, t.to_state_id)}
+                                onClick={() => setPending({ taskId: task.id, toStateId: t.to_state_id, stateName: getStateName(task.workflow_id, t.to_state_id) })}
                                 className="text-xs bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700"
                               >
                                 Move to {getStateName(task.workflow_id, t.to_state_id)}
                               </button>
                             ))}
+                          </div>
+                        )}
+
+                        {pending?.taskId === task.id && (
+                          <div className="mt-2 border border-green-200 rounded-xl p-3 bg-white space-y-2">
+                            <p className="text-xs font-medium text-gray-600">
+                              Move to <span className="text-green-700">{pending.stateName}</span> — add a note for the reviewer (optional).
+                            </p>
+                            <textarea
+                              className="w-full border rounded-lg px-3 py-2 text-xs resize-none focus:outline-none focus:ring-1 focus:ring-green-400"
+                              rows={2}
+                              placeholder="e.g. I've updated the details as requested"
+                              value={pendingComment}
+                              onChange={(e) => setPendingComment(e.target.value)}
+                              autoFocus
+                            />
+                            <div className="flex items-center gap-3">
+                              <button
+                                onClick={async () => { await handleTriggerTransition(task.id, pending.toStateId, pendingComment || null); setPending(null); setPendingComment("") }}
+                                className="text-xs bg-green-600 text-white px-4 py-1.5 rounded-lg hover:bg-green-700 font-medium"
+                              >
+                                Confirm
+                              </button>
+                              <button
+                                onClick={() => { setPending(null); setPendingComment("") }}
+                                className="text-xs text-gray-500 hover:underline"
+                              >
+                                Cancel
+                              </button>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -342,6 +394,7 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
     </div>
   )
 }

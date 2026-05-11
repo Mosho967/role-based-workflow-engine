@@ -1,7 +1,7 @@
 import { loginUser } from '../api/auth';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { setToken, setRole } from '../services/authStorage'
+import { setToken, setRole, setUsername } from '../services/authStorage'
 
 export function useLogin() {
   const [email, setEmail] = useState('')
@@ -18,6 +18,7 @@ export function useLogin() {
       const payload = JSON.parse(atob(data.access_token.split('.')[1]))
       setToken(data.access_token)
       setRole(payload.role)
+      setUsername(payload.username)
       const destination = payload.role === 'admin' ? '/admin' : payload.role === 'reviewer' ? '/reviewer' : '/dashboard'
       if (payload.role === 'user') {
         navigate('/splash', { state: { destination } })

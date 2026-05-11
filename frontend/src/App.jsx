@@ -7,21 +7,22 @@ import Register from "./pages/Register"
 import Dashboard from "./pages/dashboard/Dashboard"
 import AdminPanel from "./pages/admin/AdminPanel"
 import ReviewerDashboard from "./pages/reviewer/ReviewerDashboard"
+import TaskDetail from "./pages/task/TaskDetail"
 
 function PrivateRoute({ children }) {
-  return localStorage.getItem("token") ? children : <Navigate to="/login" />
+  return sessionStorage.getItem("token") ? children : <Navigate to="/login" />
 }
 
 function AdminRoute({ children }) {
-  const role = localStorage.getItem("role")
-  if (!localStorage.getItem("token")) return <Navigate to="/login" />
+  const role = sessionStorage.getItem("role")
+  if (!sessionStorage.getItem("token")) return <Navigate to="/login" />
   if (role !== "admin") return <Navigate to="/dashboard" />
   return children
 }
 
 function ReviewerRoute({ children }) {
-  const role = localStorage.getItem("role")
-  if (!localStorage.getItem("token")) return <Navigate to="/login" />
+  const role = sessionStorage.getItem("role")
+  if (!sessionStorage.getItem("token")) return <Navigate to="/login" />
   if (role !== "reviewer") return <Navigate to="/dashboard" />
   return children
 }
@@ -35,6 +36,10 @@ export default function App() {
         <Route
           path="/dashboard"
           element={<PrivateRoute><Dashboard /></PrivateRoute>}
+        />
+        <Route
+          path="/tasks/:taskId"
+          element={<PrivateRoute><TaskDetail /></PrivateRoute>}
         />
         <Route
           path="/reviewer"

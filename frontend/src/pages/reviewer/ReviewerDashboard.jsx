@@ -1,5 +1,6 @@
 import { useState, Fragment } from "react"
 import { useReviewer } from "../../hooks/useReviewer"
+import { useNavigate } from "react-router-dom"
 import logo from "../../assets/logo.png"
 
 export default function ReviewerDashboard() {
@@ -9,6 +10,7 @@ export default function ReviewerDashboard() {
     error,
     loading,
     role,
+    username,
     handleTriggerTransition,
     handleLogout,
     getStateName,
@@ -16,17 +18,18 @@ export default function ReviewerDashboard() {
     isStateFinal,
     getAvailableTransitions,
     getOrderedStates,
-    getSubmitterName,
+    loadData,
   } = useReviewer()
 
-  const [pending, setPending] = useState(null) // { taskId, toStateId, stateName }
+  const [pending, setPending] = useState(null)
   const [comment, setComment] = useState("")
+  const navigate = useNavigate()
 
   const sortedTasks = [...tasks].sort((a, b) => {
     const aHas = getAvailableTransitions(a.workflow_id, a.current_state_id).length > 0
     const bHas = getAvailableTransitions(b.workflow_id, b.current_state_id).length > 0
     if (aHas !== bHas) return aHas ? -1 : 1
-    return new Date(a.created_at) - new Date(b.created_at)
+    return new Date(b.updated_at) - new Date(a.updated_at)
   })
 
   const inQueue = tasks.filter((t) => getAvailableTransitions(t.workflow_id, t.current_state_id).length > 0).length
@@ -55,10 +58,19 @@ export default function ReviewerDashboard() {
           <h1 className="text-xl font-bold text-green-700">Cogflow</h1>
           <span className="text-gray-400 font-light">|</span>
           <span className="text-sm font-medium text-gray-500 capitalize">{role}</span>
+          {username && <>
+            <span className="text-gray-400 font-light">|</span>
+            <span className="text-sm font-medium text-gray-500">Hi, {username}</span>
+          </>}
         </div>
-        <button onClick={handleLogout} className="text-sm font-bold text-green-900 hover:underline">
-          Logout
-        </button>
+        <div className="flex items-center gap-4">
+          <button onClick={loadData} className="text-sm text-green-700 hover:underline">
+            Refresh
+          </button>
+          <button onClick={handleLogout} className="text-sm font-bold text-green-900 hover:underline">
+            Logout
+          </button>
+        </div>
       </div>
 
       <div className="max-w-4xl mx-auto py-8 px-4 space-y-6">
@@ -108,7 +120,7 @@ export default function ReviewerDashboard() {
                   ? "bg-amber-100 text-amber-700"
                   : "bg-blue-100 text-blue-700"
 
-                const submitter = getSubmitterName(task.created_by)
+                const submitter = task.created_by_username
                 const isPending = pending?.taskId === task.id
                 const taskLogs = auditLogs[task.id] || []
                 const lastComment = [...taskLogs].reverse().find((l) => l.comment)
@@ -177,6 +189,14 @@ export default function ReviewerDashboard() {
                       )
                     })()}
 
+                    {/* View detail */}
+                    <button
+                      onClick={() => navigate(`/tasks/${task.id}`)}
+                      className="text-xs text-green-700 hover:underline mb-2 inline-block"
+                    >
+                      View full detail →
+                    </button>
+
                     {/* Action buttons */}
                     {available.length > 0 && !isPending && (
                       <div className="flex flex-wrap gap-2 mt-1">
@@ -196,7 +216,7 @@ export default function ReviewerDashboard() {
                     {isPending && (
                       <div className="mt-3 border border-green-200 rounded-xl p-3 bg-white space-y-2">
                         <p className="text-xs font-medium text-gray-600">
-                          Moving to <span className="text-green-700">{pending.stateName}</span> — add a comment for the submitter (optional)
+                          Move to <span className="text-green-700">{pending.stateName}</span>? This cannot be undone. Add a comment for the submitter (optional).
                         </p>
                         <textarea
                           className="w-full border rounded-lg px-3 py-2 text-xs resize-none focus:outline-none focus:ring-1 focus:ring-green-400"

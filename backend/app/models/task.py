@@ -35,4 +35,8 @@ class Task(Base):
     workflow: Mapped["Workflow"] = relationship(back_populates="tasks")
     current_state: Mapped["State"] = relationship(foreign_keys=[current_state_id])
     creator: Mapped["User"] = relationship(back_populates="tasks")
-    audit_logs: Mapped[list["AuditLog"]] = relationship(back_populates="task")
+    audit_logs: Mapped[list["AuditLog"]] = relationship(back_populates="task", cascade="all, delete-orphan")
+
+    @property
+    def created_by_username(self) -> str | None:
+        return self.creator.username if self.creator else None

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom"
 import { fetchTasks } from "../api/tasks"
 import { fetchWorkflows, fetchStates, fetchTransitions, triggerTransition } from "../api/workflows"
 import { fetchAuditLogsForTask, fetchUsers } from "../api/admin"
-import { clearAuth, getRole } from "../services/authStorage"
+import { clearAuth, getRole, getUsername } from "../services/authStorage"
 
 export function useReviewer() {
   const [tasks, setTasks] = useState([])
@@ -16,6 +16,7 @@ export function useReviewer() {
   const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
   const role = getRole()
+  const username = getUsername()
 
   useEffect(() => { loadData() }, [])
 
@@ -133,8 +134,10 @@ export function useReviewer() {
     error,
     loading,
     role,
+    username,
     handleTriggerTransition,
     handleLogout,
+    loadData,
     getStateName,
     getWorkflowName,
     isStateFinal,

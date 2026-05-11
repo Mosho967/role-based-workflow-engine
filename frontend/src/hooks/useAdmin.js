@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { fetchAllAuditLogs, fetchUsers, createUser as apiCreateUser, deactivateUser as apiDeactivateUser } from "../api/admin"
-import { fetchWorkflows, createWorkflow as apiCreateWorkflow, fetchStates, fetchTransitions, createState as apiCreateState, createTransition as apiCreateTransition, deleteTransition as apiDeleteTransition, triggerTransition } from "../api/workflows"
+import { fetchWorkflows, createWorkflow as apiCreateWorkflow, fetchStates, fetchTransitions, createState as apiCreateState, createTransition as apiCreateTransition, deleteState as apiDeleteState, deleteTransition as apiDeleteTransition, triggerTransition, toggleStateFinal as apiToggleStateFinal } from "../api/workflows"
 import { fetchTasks } from "../api/tasks"
 
 export function useAdmin() {
@@ -141,6 +141,27 @@ export function useAdmin() {
     }
   }
 
+  async function handleToggleStateFinal(stateId) {
+    if (!selectedWorkflow) return
+    try {
+      const updated = await apiToggleStateFinal(selectedWorkflow.id, stateId)
+      setStates(prev => prev.map(s => s.id === updated.id ? updated : s))
+    } catch (err) {
+      setError(err.response?.data?.detail || "Failed to update state")
+    }
+  }
+
+  async function handleDeleteState(stateId) {
+    if (!selectedWorkflow) return
+    try {
+      await apiDeleteState(selectedWorkflow.id, stateId)
+      setStates(prev => prev.filter(s => s.id !== stateId))
+      setTransitions(prev => prev.filter(t => t.from_state_id !== stateId && t.to_state_id !== stateId))
+    } catch (err) {
+      setError(err.response?.data?.detail || "Failed to delete state")
+    }
+  }
+
   async function handleDeleteTransition(transitionId) {
     if (!selectedWorkflow) return
     try {
@@ -195,10 +216,12 @@ export function useAdmin() {
     handleSelectWorkflow,
     handleCreateWorkflow,
     handleCreateState,
+    handleToggleStateFinal,
     handleCreateTransition,
     handleDeleteTransition,
     handleCreateUser,
     handleDeactivateUser,
+    handleDeleteState,
     handleTriggerTransition,
     getStateName,
     getStateNameFromMap,

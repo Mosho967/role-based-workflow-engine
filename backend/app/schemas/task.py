@@ -26,6 +26,7 @@ class TaskRead(BaseModel):
     workflow_id: uuid.UUID
     current_state_id: uuid.UUID
     created_by: uuid.UUID
+    created_by_username: str | None = None
     created_at: datetime
     updated_at: datetime
 

@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useAdmin } from "../../hooks/useAdmin"
-import { clearAuth } from "../../services/authStorage"
+import { clearAuth, getUsername } from "../../services/authStorage"
 import { useNavigate } from "react-router-dom"
 import logo from "../../assets/logo.png"
 
@@ -30,6 +30,8 @@ export default function AdminPanel() {
     handleSelectWorkflow,
     handleCreateWorkflow,
     handleCreateState,
+    handleDeleteState,
+    handleToggleStateFinal,
     handleCreateTransition,
     handleDeleteTransition,
     handleCreateUser,
@@ -41,6 +43,8 @@ export default function AdminPanel() {
     getWorkflowName,
     getAvailableAdminTransitions,
   } = useAdmin()
+
+  const adminUsername = getUsername()
 
   function handleLogout() {
     clearAuth()
@@ -56,6 +60,10 @@ export default function AdminPanel() {
           <h1 className="text-xl font-bold text-green-700">Cogflow</h1>
           <span className="text-gray-400 font-light">|</span>
           <span className="text-sm font-medium text-gray-500">Admin</span>
+          {adminUsername && <>
+            <span className="text-gray-400 font-light">|</span>
+            <span className="text-sm font-medium text-gray-500">Hi, {adminUsername}</span>
+          </>}
         </div>
         <button onClick={handleLogout} className="text-sm font-bold text-green-900 hover:underline">
           Logout
@@ -211,6 +219,21 @@ export default function AdminPanel() {
                               {s.is_initial && <span className="bg-blue-100 text-blue-600 rounded-full px-1.5 py-0.5 text-[10px] font-medium">start</span>}
                               {s.is_final && <span className="bg-red-100 text-red-500 rounded-full px-1.5 py-0.5 text-[10px] font-medium">end</span>}
                               {deadEnd && <span title="No outgoing transitions — tasks will get stuck here" className="bg-orange-100 text-orange-600 rounded-full px-1.5 py-0.5 text-[10px] font-medium">stuck</span>}
+                              {!s.is_initial && (
+                                <button
+                                  onClick={() => handleToggleStateFinal(s.id)}
+                                  title={s.is_final ? "Unmark as final" : "Mark as final"}
+                                  className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium border transition-colors ${s.is_final ? "bg-red-50 text-red-500 border-red-200 hover:bg-gray-100 hover:text-gray-500" : "bg-gray-50 text-gray-400 border-gray-200 hover:bg-red-50 hover:text-red-500"}`}
+                                >
+                                  {s.is_final ? "✓ final" : "+ final"}
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleDeleteState(s.id)}
+                                className="ml-1 bg-green-800 text-white rounded-full w-4 h-4 flex items-center justify-center hover:bg-red-500 transition-colors"
+                                style={{ fontSize: "13px", lineHeight: 1, paddingBottom: "1px" }}
+                                title="Delete state"
+                              >×</button>
                             </span>
                           )
                         })}

@@ -12,11 +12,13 @@ from app.services.workflow_service import (
     add_state,
     add_transition,
     create_workflow,
+    delete_state,
     delete_transition,
     list_states,
     list_transitions,
     list_workflows,
     get_workflow,
+    toggle_state_final,
 )
 
 router = APIRouter(prefix="/workflows", tags=["workflows"])
@@ -65,6 +67,26 @@ def get_states(
     current_user: User = Depends(get_current_user),
 ):
     return list_states(db, workflow_id)
+
+
+@router.patch("/{workflow_id}/states/{state_id}/toggle-final", response_model=StateRead)
+def toggle_final(
+    workflow_id: uuid.UUID,
+    state_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("admin")),
+):
+    return toggle_state_final(db, workflow_id, state_id)
+
+
+@router.delete("/{workflow_id}/states/{state_id}", status_code=204)
+def remove_state(
+    workflow_id: uuid.UUID,
+    state_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("admin")),
+):
+    delete_state(db, workflow_id, state_id)
 
 
 @router.post("/{workflow_id}/transitions", response_model=TransitionRead, status_code=201)

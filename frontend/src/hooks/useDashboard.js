@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { fetchTasks, createTask } from "../api/tasks"
+import { fetchTasks, createTask, deleteTask } from "../api/tasks"
 import { fetchWorkflows, fetchStates, fetchTransitions, triggerTransition } from "../api/workflows"
 import { fetchAuditLogsForTask } from "../api/admin"
-import { clearAuth, getRole } from "../services/authStorage"
+import { clearAuth, getRole, getUsername } from "../services/authStorage"
 
 export function useDashboard() {
   const [tasks, setTasks] = useState([])
@@ -18,6 +18,7 @@ export function useDashboard() {
   const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
   const role = getRole()
+  const username = getUsername()
 
   useEffect(() => {
     loadData()
@@ -98,13 +99,25 @@ export function useDashboard() {
     }
   }
 
-  async function handleTriggerTransition(taskId, toStateId) {
+  async function handleTriggerTransition(taskId, toStateId, comment) {
     setError("")
     try {
-      const updated = await triggerTransition(taskId, toStateId)
+      const updated = await triggerTransition(taskId, toStateId, comment)
       setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
+      const logs = await fetchAuditLogsForTask(taskId)
+      setAuditLogs((prev) => ({ ...prev, [taskId]: logs }))
     } catch (err) {
       setError(err.response?.data?.detail || "Transition failed")
+    }
+  }
+
+  async function handleDeleteTask(taskId) {
+    setError("")
+    try {
+      await deleteTask(taskId)
+      setTasks((prev) => prev.filter((t) => t.id !== taskId))
+    } catch (err) {
+      setError(err.response?.data?.detail || "Failed to delete task")
     }
   }
 
@@ -171,6 +184,7 @@ export function useDashboard() {
     error,
     loading,
     role,
+    username,
     handleSubmitTask,
     handleTriggerTransition,
     handleLogout,
@@ -179,6 +193,7 @@ export function useDashboard() {
     getAvailableTransitions,
     isStateFinal,
     getOrderedStates,
+    handleDeleteTask,
     loadTransitions,
   }
 }

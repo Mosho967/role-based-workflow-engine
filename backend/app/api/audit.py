@@ -1,7 +1,7 @@
 import uuid
 
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.core.dependencies import get_current_user, get_db, require_role
 from app.models.audit_log import AuditLog
@@ -19,6 +19,7 @@ def get_all_audit_logs(
 ):
     return (
         db.query(AuditLog)
+        .options(joinedload(AuditLog.performed_by_user))
         .order_by(AuditLog.created_at.asc())
         .all()
     )
@@ -34,6 +35,7 @@ def get_audit_log(
     assert_task_access(task, current_user.id, current_user.role)
     return (
         db.query(AuditLog)
+        .options(joinedload(AuditLog.performed_by_user))
         .filter(AuditLog.task_id == task_id)
         .order_by(AuditLog.created_at.asc())
         .all()

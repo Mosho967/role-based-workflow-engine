@@ -68,6 +68,19 @@ def list_states(db: Session, workflow_id: uuid.UUID) -> list[State]:
     return db.query(State).filter(State.workflow_id == workflow_id).all()
 
 
+def toggle_state_final(db: Session, workflow_id: uuid.UUID, state_id: uuid.UUID) -> State:
+    get_workflow(db, workflow_id)
+    state = db.query(State).filter(State.id == state_id, State.workflow_id == workflow_id).first()
+    if not state:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="State not found")
+    if state.is_initial:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Initial state cannot be marked final")
+    state.is_final = not state.is_final
+    db.commit()
+    db.refresh(state)
+    return state
+
+
 def add_transition(
     db: Session, workflow_id: uuid.UUID, data: TransitionCreate
 ) -> Transition:
@@ -108,6 +121,25 @@ def add_transition(
 def list_transitions(db: Session, workflow_id: uuid.UUID) -> list[Transition]:
     get_workflow(db, workflow_id)
     return db.query(Transition).filter(Transition.workflow_id == workflow_id).all()
+
+
+def delete_state(db: Session, workflow_id: uuid.UUID, state_id: uuid.UUID) -> None:
+    from app.models.task import Task
+    get_workflow(db, workflow_id)
+    state = db.query(State).filter(State.id == state_id, State.workflow_id == workflow_id).first()
+    if not state:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="State not found")
+    in_use = db.query(Task).filter(Task.current_state_id == state_id).first()
+    if in_use:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete state — a task is currently in this state"
+        )
+    db.query(Transition).filter(
+        (Transition.from_state_id == state_id) | (Transition.to_state_id == state_id)
+    ).delete()
+    db.delete(state)
+    db.commit()
 
 
 def delete_transition(db: Session, workflow_id: uuid.UUID, transition_id: uuid.UUID) -> None:

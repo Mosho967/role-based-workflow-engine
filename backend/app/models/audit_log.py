@@ -39,3 +39,7 @@ class AuditLog(Base):
     to_state: Mapped["State"] = relationship(
         foreign_keys=[to_state_id]
     )
+
+    @property
+    def performed_by_username(self) -> str | None:
+        return self.performed_by_user.username if self.performed_by_user else None

@@ -43,6 +43,15 @@ export async function triggerTransition(taskId, toStateId, comment) {
   return res.data
 }
 
+export async function toggleStateFinal(workflowId, stateId) {
+  const res = await client.patch(`/workflows/${workflowId}/states/${stateId}/toggle-final`)
+  return res.data
+}
+
+export async function deleteState(workflowId, stateId) {
+  await client.delete(`/workflows/${workflowId}/states/${stateId}`)
+}
+
 export async function deleteTransition(workflowId, transitionId) {
   await client.delete(`/workflows/${workflowId}/transitions/${transitionId}`)
 }

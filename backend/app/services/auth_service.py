@@ -68,5 +68,5 @@ def login_user(db: Session, email: str, password: str) -> dict:
             detail="Account is deactivated"
         )
 
-    token = create_access_token(data={"sub": str(user.id), "role": user.role})
+    token = create_access_token(data={"sub": str(user.id), "role": user.role, "username": user.username})
     return {"access_token": token, "token_type": "bearer"}
