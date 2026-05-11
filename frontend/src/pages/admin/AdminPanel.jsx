@@ -3,6 +3,7 @@ import { useAdmin } from "../../hooks/useAdmin"
 import { clearAuth, getUsername } from "../../services/authStorage"
 import { useNavigate } from "react-router-dom"
 import logo from "../../assets/logo.png"
+import WorkflowCanvas from "../../components/WorkflowCanvas"
 
 const TABS = ["Workflow Builder", "Users", "Tasks", "Audit Logs"]
 const PRESET_STATES = ["Under Review", "In Progress", "Approved", "Rejected", "Changes Requested", "Completed", "Cancelled"]
@@ -11,6 +12,8 @@ export default function AdminPanel() {
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState("Workflow Builder")
   const [confirmDeactivate, setConfirmDeactivate] = useState(null)
+  const [aiPrompt, setAiPrompt] = useState("")
+  const [aiLoading, setAiLoading] = useState(false)
   const [showAllTasks, setShowAllTasks] = useState(false)
   const [showAllLogs, setShowAllLogs] = useState(false)
   const [transitionWarning, setTransitionWarning] = useState(null)
@@ -30,6 +33,7 @@ export default function AdminPanel() {
     handleSelectWorkflow,
     handleCreateWorkflow,
     handleCreateState,
+    handleAIGenerate,
     handleDeleteState,
     handleToggleStateFinal,
     handleCreateTransition,
@@ -154,6 +158,44 @@ export default function AdminPanel() {
               {selectedWorkflow && (
                 <div className="border-t pt-4 space-y-6">
                   <p className="text-sm font-semibold text-gray-700">Configuring: {selectedWorkflow.name}</p>
+
+                  {/* AI Generator */}
+                  <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+                    <p className="text-sm font-medium mb-2 flex items-center gap-1.5">
+                      <span>✦</span> Generate with AI
+                    </p>
+                    <p className="text-xs text-gray-400 mb-3">Describe your workflow in plain English and AI will build the states and transitions automatically.</p>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        className="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-400"
+                        placeholder="e.g. A 3-stage employee onboarding approval with HR and manager sign-off"
+                        value={aiPrompt}
+                        onChange={e => setAiPrompt(e.target.value)}
+                        onKeyDown={async e => {
+                          if (e.key === "Enter" && !aiLoading) {
+                            setAiLoading(true)
+                            await handleAIGenerate(aiPrompt)
+                            setAiPrompt("")
+                            setAiLoading(false)
+                          }
+                        }}
+                        disabled={aiLoading}
+                      />
+                      <button
+                        onClick={async () => {
+                          setAiLoading(true)
+                          await handleAIGenerate(aiPrompt)
+                          setAiPrompt("")
+                          setAiLoading(false)
+                        }}
+                        disabled={aiLoading || !aiPrompt.trim()}
+                        className="bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-900 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                      >
+                        {aiLoading ? "Generating…" : "Generate"}
+                      </button>
+                    </div>
+                  </div>
 
                   <div>
                     <p className="text-sm font-medium mb-2">Add State</p>
@@ -386,6 +428,12 @@ export default function AdminPanel() {
                       )}
                     </div>
                   )}
+
+                  {/* Canvas */}
+                  <div>
+                    <p className="text-sm font-medium mb-2">Workflow Canvas</p>
+                    <WorkflowCanvas states={states} transitions={transitions} />
+                  </div>
                 </div>
               )}
             </div>
