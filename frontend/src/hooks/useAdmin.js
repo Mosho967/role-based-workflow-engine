@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { fetchAllAuditLogs, fetchUsers, createUser as apiCreateUser, deactivateUser as apiDeactivateUser } from "../api/admin"
 import { fetchWorkflows, createWorkflow as apiCreateWorkflow, fetchStates, fetchTransitions, createState as apiCreateState, createTransition as apiCreateTransition, deleteState as apiDeleteState, deleteTransition as apiDeleteTransition, triggerTransition, toggleStateFinal as apiToggleStateFinal } from "../api/workflows"
 import { fetchTasks } from "../api/tasks"
+import { generateWorkflow as apiGenerateWorkflow } from "../api/ai"
 
 export function useAdmin() {
   const [workflows, setWorkflows] = useState([])
@@ -172,6 +173,17 @@ export function useAdmin() {
     }
   }
 
+  async function handleAIGenerate(description) {
+    if (!selectedWorkflow || !description.trim()) return
+    try {
+      const result = await apiGenerateWorkflow(selectedWorkflow.id, description.trim())
+      setStates(result.states)
+      setTransitions(result.transitions)
+    } catch (err) {
+      setError(err.response?.data?.detail || "AI generation failed")
+    }
+  }
+
   async function handleTriggerTransition(taskId, toStateId) {
     try {
       const updated = await triggerTransition(taskId, toStateId)
@@ -216,6 +228,7 @@ export function useAdmin() {
     handleSelectWorkflow,
     handleCreateWorkflow,
     handleCreateState,
+    handleAIGenerate,
     handleToggleStateFinal,
     handleCreateTransition,
     handleDeleteTransition,
