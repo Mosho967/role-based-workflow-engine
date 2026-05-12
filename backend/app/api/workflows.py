@@ -116,3 +116,21 @@ def remove_transition(
     current_user: User = Depends(require_role("admin")),
 ):
     delete_transition(db, workflow_id, transition_id)
+
+
+@router.delete("/{workflow_id}/clear", status_code=204)
+def clear_workflow(
+    workflow_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("admin")),
+):
+    from app.models.task import Task
+    from app.models.state import State
+    from app.models.transition import Transition
+    in_use = db.query(Task).filter(Task.workflow_id == workflow_id).first()
+    if in_use:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="Cannot clear — this workflow already has tasks assigned")
+    db.query(Transition).filter(Transition.workflow_id == workflow_id).delete()
+    db.query(State).filter(State.workflow_id == workflow_id).delete()
+    db.commit()

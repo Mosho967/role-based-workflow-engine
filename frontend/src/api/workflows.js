@@ -55,3 +55,7 @@ export async function deleteState(workflowId, stateId) {
 export async function deleteTransition(workflowId, transitionId) {
   await client.delete(`/workflows/${workflowId}/transitions/${transitionId}`)
 }
+
+export async function clearWorkflow(workflowId) {
+  await client.delete(`/workflows/${workflowId}/clear`)
+}
