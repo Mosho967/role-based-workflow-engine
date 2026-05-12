@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import auth, audit, tasks, transitions, users, workflows
+from app.api import ai, auth, audit, tasks, transitions, users, workflows
 
 app = FastAPI(title="Role-Based Workflow Engine")
 
@@ -13,6 +13,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(ai.router)
 app.include_router(auth.router)
 app.include_router(workflows.router)
 app.include_router(tasks.router)
