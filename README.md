@@ -1,64 +1,116 @@
 # Cogflow
 
-A role-based workflow engine that models business approval processes as state machines. Admins define workflows with states and transitions, users submit tasks that move through those states, and every transition is recorded in an audit log.
+Built with FastAPI, React, PostgreSQL, and GPT-4o.
 
-Built with FastAPI, PostgreSQL, and React.
+## Project Summary
+
+Cogflow is a full-stack workflow automation platform for modelling approval processes as role-based state machines. Admins define workflows visually, users submit tasks, reviewers move tasks through authorised transitions, and every change is recorded in an audit log.
+
+The project demonstrates backend-enforced RBAC, state-machine transition validation, PostgreSQL persistence, auditability, and AI-assisted workflow generation through Cogsy, a GPT-4o-powered assistant.
 
 ## Screenshots
 
-![Welcome](frontend/src/assets/welcome_page.png)
+![Welcome](docs/screenshots/welcome_screen.png)
 
 <table>
   <tr>
-    <td><img src="frontend/src/assets/login_page.png"/></td>
-    <td><img src="docs/screenshots/admin_workflow_builder.png"/></td>
+    <td align="center"><sub>Login</sub></td>
+    <td align="center"><sub>About</sub></td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/new_user_dashboard.png"/></td>
+    <td><img src="docs/screenshots/login_page.png"/></td>
+    <td><img src="docs/screenshots/about.png"/></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Workflow Builder</sub></td>
+    <td align="center"><sub>Workflow Canvas</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/workflow_builder.png"/></td>
+    <td><img src="docs/screenshots/Canvas.png"/></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>User Dashboard</sub></td>
+    <td align="center"><sub>Task Detail</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/user_dashboard.png"/></td>
+    <td><img src="docs/screenshots/details_screen.png"/></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Reviewer Dashboard</sub></td>
+    <td align="center"><sub>Audit Logs</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/reviewer_dashboard.png"/></td>
     <td><img src="docs/screenshots/admin_audit_logs.png"/></td>
   </tr>
 </table>
 
 ## Features
 
+**Core**
 - JWT authentication with role-based access control (admin, reviewer, user)
-- Admin panel to build workflows: define states, transitions, and required roles
+- Admin panel to build workflows: define states, transitions, and required roles per transition
+- Visual workflow canvas showing the state machine as a graph
 - Users submit tasks that are automatically placed in the initial state
 - Role-enforced state transitions — only authorised roles can move a task forward
-- Full audit log of every state transition
+- Full audit log of every state transition with timestamps
 - Admin user management: create and deactivate accounts
+- Dead-end state detection — the builder highlights states with no outgoing transitions
+
+**Cogsy — AI Workflow Assistant**
+- Integrated GPT-4o chat assistant for designing workflows from plain English descriptions
+- Preview flow — Cogsy describes the plan before building, prompting the admin to confirm
+- Redundancy detection — flags conflicting or redundant transitions with an explain-and-confirm pattern
+- Multi-turn conversation history scoped per workflow, persisted in localStorage
+- Role interpretation — correctly maps business language ("admin can terminate") to workflow structure
+- Animated mascot with idle, thinking, and cheer states reflecting the assistant's current activity
+- Apply-without-second-call pattern — flagged workflows held in pending state, saved only on confirmation
+
+## Tech Stack
+
+- **Backend**: Python 3.12, FastAPI, SQLAlchemy, Alembic, PostgreSQL
+- **Auth**: JWT (python-jose), bcrypt (passlib)
+- **AI**: OpenAI GPT-4o via the OpenAI Python SDK
+- **Frontend**: React 18, Vite, Tailwind CSS, Axios
+- **Testing**: Pytest with SQLite test database
 
 ## Project Structure
 
 ```
 role-based-workflow-engine/
 ├── backend/        # FastAPI application
+│   ├── app/
+│   │   ├── api/        # Route handlers (auth, workflows, tasks, ai, audit)
+│   │   ├── models/     # SQLAlchemy models
+│   │   ├── schemas/    # Pydantic schemas
+│   │   ├── services/   # Business logic
+│   │   └── core/       # Auth, config, dependencies
+│   └── tests/          # Pytest test suites
 ├── frontend/       # React (Vite) application
-└── docs/           # Architecture diagrams and requirements
+│   └── src/
+│       ├── components/ # WorkflowCanvas, MascotChat
+│       ├── pages/      # Admin, Reviewer, User dashboards
+│       ├── api/        # Axios API clients
+│       └── hooks/      # useAdmin, useReviewer
+└── docs/           # Architecture diagrams and screenshots
 ```
 
-## Tech Stack
+## Getting Started
 
-- **Backend**: Python 3.12, FastAPI, SQLAlchemy, Alembic, PostgreSQL
-- **Auth**: JWT (python-jose), bcrypt (passlib)
-- **Frontend**: React 18, Vite, Tailwind CSS, Axios
-- **Testing**: Pytest
-
-## Prerequisites
+### Prerequisites
 
 - Python 3.12+
 - Node.js 18+
-- PostgreSQL (or Docker to run it in a container)
-
-## Getting Started
+- Docker (for PostgreSQL)
+- OpenAI API key
 
 ### 1. Start the database
 
 ```bash
 docker run --name workflow-db -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=workflow -p 5432:5432 -d postgres
 ```
-
-Or point `DATABASE_URL` in `.env` at an existing PostgreSQL instance.
 
 ### 2. Backend
 
@@ -67,13 +119,13 @@ cd backend
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-cp .env.example .env       # fill in your values
+cp .env.example .env       # fill in DATABASE_URL and OPENAI_API_KEY
 alembic upgrade head
-python seed.py             # creates the first admin account
+python seed.py
 uvicorn app.main:app --reload
 ```
 
-API docs available at: `http://localhost:8000/docs`
+API docs: `http://localhost:8000/docs`
 
 ### 3. Frontend
 
@@ -83,7 +135,7 @@ npm install
 npm run dev
 ```
 
-App runs at: `http://localhost:5173`
+App: `http://localhost:5173`
 
 ## Default Admin Credentials
 
@@ -100,25 +152,22 @@ Change these after first login.
 
 ```bash
 cd backend
-pytest tests/
+pytest tests/ -v
 ```
 
-## Known Limitations
-
-- Workflow misconfiguration can create dead-end states; builder highlights but does not fully prevent them.
-- Reviewer and user share a unified dashboard, limiting role-specific UX.
-- No real-time or in-app notifications; users must manually check task status.
+Tests use an isolated SQLite database and cover auth, workflows, states, tasks, transitions, and audit logs.
 
 ## Design Decisions
 
-- Role-based access control enforced strictly at the backend; client cannot bypass it.
-- JWT stored in localStorage for simplicity; production should use secure httpOnly cookies.
-- Schema migrations managed with Alembic for versioning and rollback.
+- Role-based access control enforced at the backend — the client cannot bypass it
+- Cogsy uses a structured system prompt with explicit role interpretation rules to prevent common AI misinterpretations (e.g. "admin can terminate" generating approve/reject transitions instead)
+- Warn/apply pattern avoids a second GPT call on confirmation — the pending workflow is held in frontend state and posted directly to `/ai/apply-workflow`
+- JWT stored in sessionStorage (clears on tab close); production should use httpOnly cookies
+- Schema migrations managed with Alembic
 
 ## Roadmap
 
-- Deploy backend to Railway or Render and frontend to Vercel
-- Add real-time notifications (WebSockets or polling fallback)
-- Enforce strict workflow validation before task creation
-- Introduce multi-tenancy
-- Mobile client using React Native + Expo
+- Deploy backend to Railway or Render, frontend to Vercel
+- Real-time task notifications via WebSockets
+- Multi-tenancy support
+- Mobile client with React Native + Expo
