@@ -69,6 +69,19 @@ export default function About() {
           </div>
         </section>
 
+        {/* Cogsy */}
+        <section className="bg-white rounded-2xl border p-6 flex items-center gap-6">
+          <img src="/mascots/idle.gif" alt="Cogsy" className="w-24 h-24 object-contain shrink-0" />
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Meet Cogsy</h2>
+            <p className="text-gray-600 leading-relaxed text-sm">
+              Cogsy is Cogflow's built-in AI assistant. Describe your approval process in plain English
+              and Cogsy will design the full workflow — states, transitions, and role assignments — instantly.
+              No manual setup required.
+            </p>
+          </div>
+        </section>
+
         {/* Roles */}
         <section>
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Roles</h2>

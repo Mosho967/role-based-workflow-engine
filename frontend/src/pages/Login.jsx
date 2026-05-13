@@ -55,9 +55,14 @@ export default function Login() {
       {/* Left — login form */}
       <div className="flex-1 flex items-center justify-center bg-white px-8">
         <div key={shakeKey} className="w-full max-w-sm" style={shakeKey > 0 ? { animation: "shake 0.5s ease" } : {}}>
-          <div className="flex items-center gap-2 mb-8">
-            <img src={logo} alt="logo" className="w-8 h-8 object-contain" />
-            <span className="text-xl font-bold text-green-700">Cogflow</span>
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-2">
+              <img src={logo} alt="logo" className="w-8 h-8 object-contain" />
+              <span className="text-xl font-bold text-green-700">Cogflow</span>
+            </div>
+            <Link to="/" className="flex items-center gap-1 text-xs text-gray-400 hover:text-green-600 transition-colors">
+              <span>←</span> Home
+            </Link>
           </div>
 
           <h2 className="text-2xl font-bold text-gray-900 mb-1">Welcome back</h2>

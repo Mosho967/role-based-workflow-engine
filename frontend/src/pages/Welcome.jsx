@@ -77,12 +77,13 @@ export default function Welcome() {
           >
             Get Started
           </Link>
+
         </div>
       </main>
 
       {/* Feature strip */}
       <div className="bg-green-900 border-t border-green-800 py-10 px-6 relative z-10">
-        <div className="max-w-3xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-8 text-center">
+        <div className="max-w-4xl mx-auto grid grid-cols-1 sm:grid-cols-4 gap-8 text-center">
           <div>
             <p className="text-green-300 font-semibold mb-1">Role-Based Access</p>
             <p className="text-sm text-green-100">Admins, reviewers, and users each see exactly what they need.</p>
@@ -94,6 +95,10 @@ export default function Welcome() {
           <div>
             <p className="text-green-300 font-semibold mb-1">Full Audit Log</p>
             <p className="text-sm text-green-100">Every transition is recorded so nothing gets lost.</p>
+          </div>
+          <div>
+            <p className="text-green-300 font-semibold mb-1">✦ Cogsy AI</p>
+            <p className="text-sm text-green-100">AI-assisted workflow design — describe it in plain English and Cogsy builds it.</p>
           </div>
         </div>
       </div>
