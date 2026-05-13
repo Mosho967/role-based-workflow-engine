@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { fetchAllAuditLogs, fetchUsers, createUser as apiCreateUser, deactivateUser as apiDeactivateUser } from "../api/admin"
-import { fetchWorkflows, createWorkflow as apiCreateWorkflow, fetchStates, fetchTransitions, createState as apiCreateState, createTransition as apiCreateTransition, deleteState as apiDeleteState, deleteTransition as apiDeleteTransition, triggerTransition, toggleStateFinal as apiToggleStateFinal } from "../api/workflows"
+import { fetchWorkflows, createWorkflow as apiCreateWorkflow, fetchStates, fetchTransitions, createState as apiCreateState, createTransition as apiCreateTransition, deleteState as apiDeleteState, deleteTransition as apiDeleteTransition, triggerTransition, toggleStateFinal as apiToggleStateFinal, clearWorkflow as apiClearWorkflow } from "../api/workflows"
 import { fetchTasks } from "../api/tasks"
 import { generateWorkflow as apiGenerateWorkflow } from "../api/ai"
 
@@ -184,6 +184,22 @@ export function useAdmin() {
     }
   }
 
+  function handleAIGenerated(newStates, newTransitions) {
+    setStates(newStates)
+    setTransitions(newTransitions)
+  }
+
+  async function handleClearWorkflow() {
+    if (!selectedWorkflow) return
+    try {
+      await apiClearWorkflow(selectedWorkflow.id)
+      setStates([])
+      setTransitions([])
+    } catch (err) {
+      setError(err.response?.data?.detail || "Failed to clear workflow")
+    }
+  }
+
   async function handleTriggerTransition(taskId, toStateId) {
     try {
       const updated = await triggerTransition(taskId, toStateId)
@@ -229,6 +245,8 @@ export function useAdmin() {
     handleCreateWorkflow,
     handleCreateState,
     handleAIGenerate,
+    handleAIGenerated,
+    handleClearWorkflow,
     handleToggleStateFinal,
     handleCreateTransition,
     handleDeleteTransition,

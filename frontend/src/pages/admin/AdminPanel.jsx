@@ -4,6 +4,7 @@ import { clearAuth, getUsername } from "../../services/authStorage"
 import { useNavigate } from "react-router-dom"
 import logo from "../../assets/logo.png"
 import WorkflowCanvas from "../../components/WorkflowCanvas"
+import MascotChat from "../../components/MascotChat"
 
 const TABS = ["Workflow Builder", "Users", "Tasks", "Audit Logs"]
 const PRESET_STATES = ["Under Review", "In Progress", "Approved", "Rejected", "Changes Requested", "Completed", "Cancelled"]
@@ -12,6 +13,9 @@ export default function AdminPanel() {
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState("Workflow Builder")
   const [confirmDeactivate, setConfirmDeactivate] = useState(null)
+  const [confirmClear, setConfirmClear] = useState(false)
+  const [pendingDeleteState, setPendingDeleteState] = useState(null)
+  const [pendingDeleteTransition, setPendingDeleteTransition] = useState(null)
   const [aiPrompt, setAiPrompt] = useState("")
   const [aiLoading, setAiLoading] = useState(false)
   const [showAllTasks, setShowAllTasks] = useState(false)
@@ -34,6 +38,8 @@ export default function AdminPanel() {
     handleCreateWorkflow,
     handleCreateState,
     handleAIGenerate,
+    handleAIGenerated,
+    handleClearWorkflow,
     handleDeleteState,
     handleToggleStateFinal,
     handleCreateTransition,
@@ -56,7 +62,7 @@ export default function AdminPanel() {
   }
 
   return (
-    <div className="min-h-screen bg-green-100">
+    <div className="min-h-screen bg-green-100" onClick={() => { setPendingDeleteState(null); setPendingDeleteTransition(null) }}>
       {/* Top bar */}
       <div className="bg-white shadow px-6 py-4 flex justify-between items-center border-b-2 border-green-600">
         <div className="flex items-center gap-2">
@@ -89,7 +95,7 @@ export default function AdminPanel() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto py-8 px-4">
+      <div className="max-w-6xl mx-auto py-8 px-4">
         {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
 
         {/* Workflow Builder */}
@@ -156,281 +162,284 @@ export default function AdminPanel() {
               )}
 
               {selectedWorkflow && (
-                <div className="border-t pt-4 space-y-6">
-                  <p className="text-sm font-semibold text-gray-700">Configuring: {selectedWorkflow.name}</p>
-
-                  {/* AI Generator */}
-                  <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
-                    <p className="text-sm font-medium mb-2 flex items-center gap-1.5">
-                      <span>✦</span> Generate with AI
-                    </p>
-                    <p className="text-xs text-gray-400 mb-3">Describe your workflow in plain English and AI will build the states and transitions automatically.</p>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        className="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-400"
-                        placeholder="e.g. A 3-stage employee onboarding approval with HR and manager sign-off"
-                        value={aiPrompt}
-                        onChange={e => setAiPrompt(e.target.value)}
-                        onKeyDown={async e => {
-                          if (e.key === "Enter" && !aiLoading) {
-                            setAiLoading(true)
-                            await handleAIGenerate(aiPrompt)
-                            setAiPrompt("")
-                            setAiLoading(false)
-                          }
-                        }}
-                        disabled={aiLoading}
-                      />
-                      <button
-                        onClick={async () => {
-                          setAiLoading(true)
-                          await handleAIGenerate(aiPrompt)
-                          setAiPrompt("")
-                          setAiLoading(false)
-                        }}
-                        disabled={aiLoading || !aiPrompt.trim()}
-                        className="bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-900 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                      >
-                        {aiLoading ? "Generating…" : "Generate"}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <p className="text-sm font-medium mb-2">Add State</p>
-                    <div className="flex flex-wrap gap-2 items-center">
-                      <select
-                        className="border rounded px-3 py-2 text-sm"
-                        value=""
-                        onChange={e => {
-                          if (!e.target.value) return
-                          const name = e.target.value
-                          const isFinal = /approved|rejected|completed|cancelled/i.test(name)
-                          setNewState(prev => ({ ...prev, name, is_initial: false, is_final: isFinal }))
-                        }}
-                      >
-                        <option value="">Quick select...</option>
-                        {PRESET_STATES.map(s => <option key={s} value={s}>{s}</option>)}
-                      </select>
-                      <input
-                        type="text"
-                        className="border rounded px-3 py-2 text-sm"
-                        placeholder="Or type custom name"
-                        value={newState.name}
-                        onChange={e => setNewState(prev => ({ ...prev, name: e.target.value }))}
-                      />
-                      <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
-                        {[
-                          { label: "None", is_initial: false, is_final: false },
-                          { label: "Start", is_initial: true,  is_final: false },
-                          { label: "End",   is_initial: false, is_final: true  },
-                        ].map(opt => {
-                          const active = newState.is_initial === opt.is_initial && newState.is_final === opt.is_final
-                          const colour = active
-                            ? opt.label === "Start" ? "bg-blue-500 text-white"
-                            : opt.label === "End"   ? "bg-red-500 text-white"
-                            : "bg-green-600 text-white"
-                            : "bg-white text-gray-500 hover:bg-gray-50"
-                          return (
-                            <button
-                              key={opt.label}
-                              type="button"
-                              onClick={() => setNewState(prev => ({ ...prev, is_initial: opt.is_initial, is_final: opt.is_final }))}
-                              className={`px-3 py-2 transition-colors ${colour}`}
-                            >{opt.label}</button>
-                          )
-                        })}
-                      </div>
-                      <button
-                        onClick={handleCreateState}
-                        className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm hover:bg-green-700 hover:shadow-md transition-all"
-                      >
-                        Add State
-                      </button>
-                    </div>
-
+                <div className="border-t pt-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="text-sm font-semibold text-gray-700">Configuring: {selectedWorkflow.name}</p>
                     {states.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {states.map(s => {
-                          const hasOutgoing = transitions.some(t => t.from_state_id === s.id)
-                          const deadEnd = !s.is_final && !hasOutgoing
-                          return (
-                            <span key={s.id} className={`inline-flex items-center gap-1.5 text-xs rounded-full px-3 py-1 ${deadEnd ? "bg-orange-50 border border-orange-300 text-orange-800" : "bg-green-50 border border-green-200 text-green-800"}`}>
-                              {s.name}
-                              {s.is_initial && <span className="bg-blue-100 text-blue-600 rounded-full px-1.5 py-0.5 text-[10px] font-medium">start</span>}
-                              {s.is_final && <span className="bg-red-100 text-red-500 rounded-full px-1.5 py-0.5 text-[10px] font-medium">end</span>}
-                              {deadEnd && <span title="No outgoing transitions — tasks will get stuck here" className="bg-orange-100 text-orange-600 rounded-full px-1.5 py-0.5 text-[10px] font-medium">stuck</span>}
-                              {!s.is_initial && (
-                                <button
-                                  onClick={() => handleToggleStateFinal(s.id)}
-                                  title={s.is_final ? "Unmark as final" : "Mark as final"}
-                                  className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium border transition-colors ${s.is_final ? "bg-red-50 text-red-500 border-red-200 hover:bg-gray-100 hover:text-gray-500" : "bg-gray-50 text-gray-400 border-gray-200 hover:bg-red-50 hover:text-red-500"}`}
-                                >
-                                  {s.is_final ? "✓ final" : "+ final"}
-                                </button>
-                              )}
-                              <button
-                                onClick={() => handleDeleteState(s.id)}
-                                className="ml-1 bg-green-800 text-white rounded-full w-4 h-4 flex items-center justify-center hover:bg-red-500 transition-colors"
-                                style={{ fontSize: "13px", lineHeight: 1, paddingBottom: "1px" }}
-                                title="Delete state"
-                              >×</button>
-                            </span>
-                          )
-                        })}
-                      </div>
+                      <button
+                        onClick={() => setConfirmClear(true)}
+                        className="text-xs font-medium bg-red-50 text-red-600 border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-100 transition-colors"
+                      >
+                        Clear workflow
+                      </button>
                     )}
                   </div>
 
-                  {states.length >= 2 && (
-                    <div>
-                      <p className="text-sm font-medium mb-2">Add Transition</p>
-                      <div className="flex flex-wrap gap-2 items-center">
-                        <select
-                          className="border rounded px-3 py-2 text-sm"
-                          value={newTransition.from_state_id}
-                          onChange={e => setNewTransition(prev => ({ ...prev, from_state_id: e.target.value }))}
-                        >
-                          <option value="">From state</option>
-                          {states.map(s => (
-                            <option key={s.id} value={s.id}>{s.name}</option>
-                          ))}
-                        </select>
-                        <span className="text-sm text-gray-500">→</span>
-                        <select
-                          className="border rounded px-3 py-2 text-sm"
-                          value={newTransition.to_state_id}
-                          onChange={e => {
-                            const toId = e.target.value
-                            const toState = states.find(s => s.id === toId)
-                            setNewTransition(prev => ({
-                              ...prev,
-                              to_state_id: toId,
-                              required_role: toState && /approved|rejected|completed|changes requested/i.test(toState.name) ? "reviewer" : prev.required_role
-                            }))
-                          }}
-                        >
-                          <option value="">To state</option>
-                          {states.map(s => (
-                            <option key={s.id} value={s.id}>{s.name}</option>
-                          ))}
-                        </select>
-                        <select
-                          className="border rounded px-3 py-2 text-sm"
-                          value={newTransition.required_role}
-                          onChange={e => setNewTransition(prev => ({ ...prev, required_role: e.target.value }))}
-                        >
-                          <option value="user">user</option>
-                          <option value="reviewer">reviewer</option>
-                          <option value="admin">admin</option>
-                        </select>
-                        <button
-                          onClick={() => {
-                            const from = states.find(s => s.id === newTransition.from_state_id)
-                            const to = states.find(s => s.id === newTransition.to_state_id)
-                            const role = newTransition.required_role
-                            const isTerminal = to && /approved|rejected|completed/i.test(to.name)
-                            let block = null
-                            let warning = null
-                            const isDuplicate = transitions.some(t =>
-                              t.from_state_id === newTransition.from_state_id &&
-                              t.to_state_id === newTransition.to_state_id &&
-                              t.required_role === newTransition.required_role
-                            )
-                            if (isDuplicate) {
-                              block = "Transition already exists."
-                            } else if (newTransition.from_state_id === newTransition.to_state_id) {
-                              block = "A transition cannot go from a state back to itself — the task would not move anywhere."
-                            } else if (from?.is_final) {
-                              block = "This starts from a final (end) state. Tasks in a final state cannot be moved, so this transition will never fire."
-                            } else if (from?.is_initial && to?.is_final) {
-                              warning = "This goes directly from the start state to an end state, skipping any review steps. Tasks will jump straight to a terminal state."
-                            } else if (to?.is_initial) {
-                              warning = "This loops back to the initial state. Tasks would restart from the beginning, which is not typical for an approval workflow."
-                            } else if (role === "user" && isTerminal) {
-                              warning = "This lets a regular user approve or reject their own task. Approvals are usually handled by reviewer or admin."
-                            } else if (role === "admin" && isTerminal) {
-                              warning = "Approve/Reject decisions are usually assigned to reviewer, not admin. This means reviewer will have no meaningful action in this workflow."
-                            }
-                            if (block) {
-                              setTransitionBlock(block)
-                              setTransitionWarning(null)
-                              setWarningShakeKey(k => k + 1)
-                            } else if (warning) {
-                              setTransitionWarning(warning)
-                              setTransitionBlock(null)
-                              setWarningShakeKey(k => k + 1)
-                            } else {
-                              handleCreateTransition()
-                            }
-                          }}
-                          className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm hover:bg-green-700 hover:shadow-md transition-all"
-                        >
-                          Add Transition
-                        </button>
+                  <div className="flex gap-6 items-start">
+                    {/* Left: states + transitions */}
+                    <div className="flex-1 min-w-0 space-y-6">
+
+                      <div>
+                        <p className="text-sm font-medium mb-2">Add State</p>
+                        <div className="flex flex-wrap gap-2 items-center">
+                          <select
+                            className="border rounded px-3 py-2 text-sm"
+                            value=""
+                            onChange={e => {
+                              if (!e.target.value) return
+                              const name = e.target.value
+                              const isFinal = /approved|rejected|completed|cancelled/i.test(name)
+                              setNewState(prev => ({ ...prev, name, is_initial: false, is_final: isFinal }))
+                            }}
+                          >
+                            <option value="">Quick select...</option>
+                            {PRESET_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                          <input
+                            type="text"
+                            className="border rounded px-3 py-2 text-sm"
+                            placeholder="Or type custom name"
+                            value={newState.name}
+                            onChange={e => setNewState(prev => ({ ...prev, name: e.target.value }))}
+                          />
+                          <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
+                            {[
+                              { label: "None", is_initial: false, is_final: false },
+                              { label: "Start", is_initial: true,  is_final: false },
+                              { label: "End",   is_initial: false, is_final: true  },
+                            ].map(opt => {
+                              const active = newState.is_initial === opt.is_initial && newState.is_final === opt.is_final
+                              const colour = active
+                                ? opt.label === "Start" ? "bg-blue-500 text-white"
+                                : opt.label === "End"   ? "bg-red-500 text-white"
+                                : "bg-green-600 text-white"
+                                : "bg-white text-gray-500 hover:bg-gray-50"
+                              return (
+                                <button
+                                  key={opt.label}
+                                  type="button"
+                                  onClick={() => setNewState(prev => ({ ...prev, is_initial: opt.is_initial, is_final: opt.is_final }))}
+                                  className={`px-3 py-2 transition-colors ${colour}`}
+                                >{opt.label}</button>
+                              )
+                            })}
+                          </div>
+                          <button
+                            onClick={handleCreateState}
+                            className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm hover:bg-green-700 hover:shadow-md transition-all"
+                          >
+                            Add State
+                          </button>
+                        </div>
+
+                        {states.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {states.map(s => {
+                              const hasOutgoing = transitions.some(t => t.from_state_id === s.id)
+                              const deadEnd = !s.is_final && !hasOutgoing
+                              return (
+                                <span key={s.id} className={`inline-flex items-center gap-1.5 text-xs rounded-full px-3 py-1 ${deadEnd ? "bg-orange-50 border border-orange-300 text-orange-800" : "bg-green-50 border border-green-200 text-green-800"}`}>
+                                  {s.name}
+                                  {s.is_initial && <span className="bg-blue-100 text-blue-600 rounded-full px-1.5 py-0.5 text-[10px] font-medium">start</span>}
+                                  {s.is_final && <span className="bg-red-100 text-red-500 rounded-full px-1.5 py-0.5 text-[10px] font-medium">end</span>}
+                                  {deadEnd && <span title="No outgoing transitions — tasks will get stuck here" className="bg-orange-100 text-orange-600 rounded-full px-1.5 py-0.5 text-[10px] font-medium">stuck</span>}
+                                  {!s.is_initial && (
+                                    <button
+                                      onClick={() => handleToggleStateFinal(s.id)}
+                                      title={s.is_final ? "Unmark as final" : "Mark as final"}
+                                      className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium border transition-colors ${s.is_final ? "bg-red-50 text-red-500 border-red-200 hover:bg-gray-100 hover:text-gray-500" : "bg-gray-50 text-gray-400 border-gray-200 hover:bg-red-50 hover:text-red-500"}`}
+                                    >
+                                      {s.is_final ? "✓ final" : "+ final"}
+                                    </button>
+                                  )}
+                                  {pendingDeleteState === s.id ? (
+                                    <button
+                                      onClick={e => { e.stopPropagation(); handleDeleteState(s.id); setPendingDeleteState(null) }}
+                                      className="ml-1 bg-red-500 text-white rounded-full px-1.5 h-4 flex items-center justify-center text-[10px] font-medium"
+                                    >Confirm?</button>
+                                  ) : (
+                                    <button
+                                      onClick={e => { e.stopPropagation(); setPendingDeleteState(s.id) }}
+                                      className="ml-1 bg-green-800 text-white rounded-full w-4 h-4 flex items-center justify-center hover:bg-red-500 transition-colors"
+                                      style={{ fontSize: "13px", lineHeight: 1, paddingBottom: "1px" }}
+                                      title="Delete state"
+                                    >×</button>
+                                  )}
+                                </span>
+                              )
+                            })}
+                          </div>
+                        )}
                       </div>
 
-                      {transitionBlock && (
-                        <div key={warningShakeKey} className="mt-3 bg-red-50 border border-red-300 rounded-lg px-4 py-3 text-sm text-red-800" style={{ animation: "shake 0.5s ease" }}>
-                          <p className="font-medium mb-1">Cannot add this transition</p>
-                          <p className="mb-3">{transitionBlock}</p>
-                          <button
-                            onClick={() => setTransitionBlock(null)}
-                            className="text-red-700 px-3 py-1 rounded text-xs font-medium hover:underline"
-                          >Dismiss</button>
-                        </div>
-                      )}
-
-                      {transitionWarning && (
-                        <div key={warningShakeKey} className="mt-3 bg-yellow-50 border border-yellow-300 rounded-lg px-4 py-3 text-sm text-yellow-800" style={{ animation: "shake 0.5s ease" }}>
-                          <p className="font-medium mb-1">Are you sure?</p>
-                          <p className="mb-3">{transitionWarning}</p>
-                          <div className="flex gap-2">
+                      {states.length >= 2 && (
+                        <div>
+                          <p className="text-sm font-medium mb-2">Add Transition</p>
+                          <div className="flex flex-wrap gap-2 items-center">
+                            <select
+                              className="border rounded px-3 py-2 text-sm"
+                              value={newTransition.from_state_id}
+                              onChange={e => setNewTransition(prev => ({ ...prev, from_state_id: e.target.value }))}
+                            >
+                              <option value="">From state</option>
+                              {states.map(s => (
+                                <option key={s.id} value={s.id}>{s.name}</option>
+                              ))}
+                            </select>
+                            <span className="text-sm text-gray-500">→</span>
+                            <select
+                              className="border rounded px-3 py-2 text-sm"
+                              value={newTransition.to_state_id}
+                              onChange={e => {
+                                const toId = e.target.value
+                                const toState = states.find(s => s.id === toId)
+                                setNewTransition(prev => ({
+                                  ...prev,
+                                  to_state_id: toId,
+                                  required_role: toState && /approved|rejected|completed|changes requested/i.test(toState.name) ? "reviewer" : prev.required_role
+                                }))
+                              }}
+                            >
+                              <option value="">To state</option>
+                              {states.map(s => (
+                                <option key={s.id} value={s.id}>{s.name}</option>
+                              ))}
+                            </select>
+                            <select
+                              className="border rounded px-3 py-2 text-sm"
+                              value={newTransition.required_role}
+                              onChange={e => setNewTransition(prev => ({ ...prev, required_role: e.target.value }))}
+                            >
+                              <option value="user">user</option>
+                              <option value="reviewer">reviewer</option>
+                              <option value="admin">admin</option>
+                            </select>
                             <button
                               onClick={() => {
-                                setSuspiciousTransitions(prev => [...prev, {
-                                  from: newTransition.from_state_id,
-                                  to: newTransition.to_state_id,
-                                  role: newTransition.required_role,
-                                }])
-                                handleCreateTransition()
-                                setTransitionWarning(null)
+                                const from = states.find(s => s.id === newTransition.from_state_id)
+                                const to = states.find(s => s.id === newTransition.to_state_id)
+                                const role = newTransition.required_role
+                                const isTerminal = to && /approved|rejected|completed/i.test(to.name)
+                                let block = null
+                                let warning = null
+                                const isDuplicate = transitions.some(t =>
+                                  t.from_state_id === newTransition.from_state_id &&
+                                  t.to_state_id === newTransition.to_state_id &&
+                                  t.required_role === newTransition.required_role
+                                )
+                                if (isDuplicate) {
+                                  block = "Transition already exists."
+                                } else if (newTransition.from_state_id === newTransition.to_state_id) {
+                                  block = "A transition cannot go from a state back to itself — the task would not move anywhere."
+                                } else if (from?.is_final) {
+                                  block = "This starts from a final (end) state. Tasks in a final state cannot be moved, so this transition will never fire."
+                                } else if (from?.is_initial && to?.is_final) {
+                                  warning = "This goes directly from the start state to an end state, skipping any review steps. Tasks will jump straight to a terminal state."
+                                } else if (to?.is_initial) {
+                                  warning = "This loops back to the initial state. Tasks would restart from the beginning, which is not typical for an approval workflow."
+                                } else if (role === "user" && isTerminal) {
+                                  warning = "This lets a regular user approve or reject their own task. Approvals are usually handled by reviewer or admin."
+                                } else if (role === "admin" && isTerminal) {
+                                  warning = "Approve/Reject decisions are usually assigned to reviewer, not admin. This means reviewer will have no meaningful action in this workflow."
+                                }
+                                if (block) {
+                                  setTransitionBlock(block)
+                                  setTransitionWarning(null)
+                                  setWarningShakeKey(k => k + 1)
+                                } else if (warning) {
+                                  setTransitionWarning(warning)
+                                  setTransitionBlock(null)
+                                  setWarningShakeKey(k => k + 1)
+                                } else {
+                                  handleCreateTransition()
+                                }
                               }}
-                              className="bg-yellow-600 text-white px-3 py-1 rounded text-xs font-medium hover:bg-yellow-700"
-                            >Add anyway</button>
-                            <button
-                              onClick={() => setTransitionWarning(null)}
-                              className="text-yellow-700 px-3 py-1 rounded text-xs font-medium hover:underline"
-                            >Cancel</button>
+                              className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm hover:bg-green-700 hover:shadow-md transition-all"
+                            >
+                              Add Transition
+                            </button>
                           </div>
-                        </div>
-                      )}
 
-                      {transitions.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {transitions.map(t => {
-                            const isSuspicious = suspiciousTransitions.some(s => s.from === t.from_state_id && s.to === t.to_state_id && s.role === t.required_role)
-                            return (
-                            <span key={t.id} className={`inline-flex items-center gap-1 text-xs rounded-full px-3 py-1 ${isSuspicious ? "bg-yellow-50 border border-yellow-300 text-yellow-800" : "bg-green-50 border border-green-200 text-green-800"}`}>
-                              {isSuspicious && <span title="Added despite a warning">⚠️</span>}
-                              {getStateName(t.from_state_id)} → {getStateName(t.to_state_id)} · {t.required_role}
+                          {transitionBlock && (
+                            <div key={warningShakeKey} className="mt-3 bg-red-50 border border-red-300 rounded-lg px-4 py-3 text-sm text-red-800" style={{ animation: "shake 0.5s ease" }}>
+                              <p className="font-medium mb-1">Cannot add this transition</p>
+                              <p className="mb-3">{transitionBlock}</p>
                               <button
-                                onClick={() => handleDeleteTransition(t.id)}
-                                className="ml-1 bg-green-800 text-white rounded-full w-4 h-4 flex items-center justify-center hover:bg-red-500 transition-colors"
-                                style={{ fontSize: "13px", lineHeight: 1, paddingBottom: "1px" }}
-                                title="Delete transition"
-                              >×</button>
-                            </span>
-                          )
-                          })}
+                                onClick={() => setTransitionBlock(null)}
+                                className="text-red-700 px-3 py-1 rounded text-xs font-medium hover:underline"
+                              >Dismiss</button>
+                            </div>
+                          )}
+
+                          {transitionWarning && (
+                            <div key={warningShakeKey} className="mt-3 bg-yellow-50 border border-yellow-300 rounded-lg px-4 py-3 text-sm text-yellow-800" style={{ animation: "shake 0.5s ease" }}>
+                              <p className="font-medium mb-1">Are you sure?</p>
+                              <p className="mb-3">{transitionWarning}</p>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => {
+                                    setSuspiciousTransitions(prev => [...prev, {
+                                      from: newTransition.from_state_id,
+                                      to: newTransition.to_state_id,
+                                      role: newTransition.required_role,
+                                    }])
+                                    handleCreateTransition()
+                                    setTransitionWarning(null)
+                                  }}
+                                  className="bg-yellow-600 text-white px-3 py-1 rounded text-xs font-medium hover:bg-yellow-700"
+                                >Add anyway</button>
+                                <button
+                                  onClick={() => setTransitionWarning(null)}
+                                  className="text-yellow-700 px-3 py-1 rounded text-xs font-medium hover:underline"
+                                >Cancel</button>
+                              </div>
+                            </div>
+                          )}
+
+                          {transitions.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {transitions.map(t => {
+                                const isSuspicious = suspiciousTransitions.some(s => s.from === t.from_state_id && s.to === t.to_state_id && s.role === t.required_role)
+                                return (
+                                  <span key={t.id} className={`inline-flex items-center gap-1 text-xs rounded-full px-3 py-1 ${isSuspicious ? "bg-yellow-50 border border-yellow-300 text-yellow-800" : "bg-green-50 border border-green-200 text-green-800"}`}>
+                                    {isSuspicious && <span title="Added despite a warning">⚠️</span>}
+                                    {getStateName(t.from_state_id)} → {getStateName(t.to_state_id)} · {t.required_role}
+                                    {pendingDeleteTransition === t.id ? (
+                                      <button
+                                        onClick={e => { e.stopPropagation(); handleDeleteTransition(t.id); setPendingDeleteTransition(null) }}
+                                        className="ml-1 bg-red-500 text-white rounded-full px-1.5 h-4 flex items-center justify-center text-[10px] font-medium"
+                                      >Confirm?</button>
+                                    ) : (
+                                      <button
+                                        onClick={e => { e.stopPropagation(); setPendingDeleteTransition(t.id) }}
+                                        className="ml-1 bg-green-800 text-white rounded-full w-4 h-4 flex items-center justify-center hover:bg-red-500 transition-colors"
+                                        style={{ fontSize: "13px", lineHeight: 1, paddingBottom: "1px" }}
+                                        title="Delete transition"
+                                      >×</button>
+                                    )}
+                                  </span>
+                                )
+                              })}
+                            </div>
+                          )}
                         </div>
                       )}
-                    </div>
-                  )}
 
-                  {/* Canvas */}
-                  <div>
+                    </div>
+
+                    {/* Right: Cogsy AI chat */}
+                    <div className="w-96 flex-shrink-0">
+                      <MascotChat
+                        workflowId={selectedWorkflow.id}
+                        states={states}
+                        transitions={transitions}
+                        onGenerated={handleAIGenerated}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Canvas — full width below */}
+                  <div className="mt-6">
                     <p className="text-sm font-medium mb-2">Workflow Canvas</p>
                     <WorkflowCanvas states={states} transitions={transitions} />
                   </div>
@@ -651,6 +660,32 @@ export default function AdminPanel() {
         )}
 
       </div>
+
+      {confirmClear && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">Clear workflow?</h3>
+            <p className="text-sm text-gray-600 mb-1">
+              This will delete all states and transitions from <span className="font-medium">{selectedWorkflow?.name}</span>.
+            </p>
+            <p className="text-sm text-red-600 mb-6">This cannot be undone.</p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setConfirmClear(false)}
+                className="px-4 py-2 text-sm rounded border hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { handleClearWorkflow(); setConfirmClear(false) }}
+                className="px-4 py-2 text-sm rounded bg-red-600 text-white hover:bg-red-700"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {confirmDeactivate && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
