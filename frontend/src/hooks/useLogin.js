@@ -20,11 +20,7 @@ export function useLogin() {
       setRole(payload.role)
       setUsername(payload.username)
       const destination = payload.role === 'admin' ? '/admin' : payload.role === 'reviewer' ? '/reviewer' : '/dashboard'
-      if (payload.role === 'user') {
-        navigate('/splash', { state: { destination } })
-      } else {
-        navigate(destination)
-      }
+      navigate('/splash', { state: { destination } })
     } catch (err) {
       const detail = err.response?.data?.detail
       if (Array.isArray(detail)) {
