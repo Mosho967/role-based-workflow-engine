@@ -26,6 +26,7 @@ export default function AdminPanel() {
   const [suspiciousTransitions, setSuspiciousTransitions] = useState([])
   const [showBuilderHelp, setShowBuilderHelp] = useState(false)
   const [showUsersHelp, setShowUsersHelp] = useState(false)
+  const [collapsedRoles, setCollapsedRoles] = useState({})
   const LIMIT = 5
   const {
     workflows, selectedWorkflow, states, transitions,
@@ -397,27 +398,55 @@ export default function AdminPanel() {
                           )}
 
                           {transitions.length > 0 && (
-                            <div className="mt-2 flex flex-wrap gap-2">
-                              {transitions.map(t => {
-                                const isSuspicious = suspiciousTransitions.some(s => s.from === t.from_state_id && s.to === t.to_state_id && s.role === t.required_role)
+                            <div className="mt-3 space-y-2">
+                              {["user", "reviewer", "admin"].map(role => {
+                                const group = transitions.filter(t => t.required_role === role)
+                                if (group.length === 0) return null
+                                const isOpen = !collapsedRoles[role]
+                                const roleBadge = role === "admin" ? "bg-red-50 border-red-200 text-red-700" : role === "reviewer" ? "bg-yellow-50 border-yellow-200 text-yellow-700" : "bg-blue-50 border-blue-200 text-blue-700"
                                 return (
-                                  <span key={t.id} className={`inline-flex items-center gap-1 text-xs rounded-full px-3 py-1 ${isSuspicious ? "bg-yellow-50 border border-yellow-300 text-yellow-800" : "bg-green-50 border border-green-200 text-green-800"}`}>
-                                    {isSuspicious && <span title="Added despite a warning">⚠️</span>}
-                                    {getStateName(t.from_state_id)} → {getStateName(t.to_state_id)} · {t.required_role}
-                                    {pendingDeleteTransition === t.id ? (
-                                      <button
-                                        onClick={e => { e.stopPropagation(); handleDeleteTransition(t.id); setPendingDeleteTransition(null) }}
-                                        className="ml-1 bg-red-500 text-white rounded-full px-1.5 h-4 flex items-center justify-center text-[10px] font-medium"
-                                      >Confirm?</button>
-                                    ) : (
-                                      <button
-                                        onClick={e => { e.stopPropagation(); setPendingDeleteTransition(t.id) }}
-                                        className="ml-1 bg-green-800 text-white rounded-full w-4 h-4 flex items-center justify-center hover:bg-red-500 transition-colors"
-                                        style={{ fontSize: "13px", lineHeight: 1, paddingBottom: "1px" }}
-                                        title="Delete transition"
-                                      >×</button>
+                                  <div key={role} className="border border-gray-200 rounded-lg overflow-hidden">
+                                    <button
+                                      onClick={e => { e.stopPropagation(); setCollapsedRoles(prev => ({ ...prev, [role]: !prev[role] })) }}
+                                      className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${roleBadge}`}>{role}</span>
+                                        <span className="text-xs text-gray-500">{group.length} transition{group.length !== 1 ? "s" : ""}</span>
+                                      </div>
+                                      <span className="text-gray-400 text-xs">{isOpen ? "▲" : "▼"}</span>
+                                    </button>
+                                    {isOpen && (
+                                      <div className="px-3 py-2 flex flex-wrap gap-2">
+                                        {group.map(t => {
+                                          const isSuspicious = suspiciousTransitions.some(s => s.from === t.from_state_id && s.to === t.to_state_id && s.role === t.required_role)
+                                          const toState = states.find(s => s.id === t.to_state_id)
+                                          const fromState = states.find(s => s.id === t.from_state_id)
+                                          return (
+                                            <span key={t.id} className={`inline-flex items-center gap-1 text-xs rounded-full px-3 py-1 ${isSuspicious ? "bg-yellow-50 border border-yellow-300 text-yellow-800" : "bg-green-50 border border-green-200 text-green-800"}`}>
+                                              {isSuspicious && <span title="Added despite a warning">⚠️</span>}
+                                              {fromState?.is_initial && <span className="bg-blue-100 text-blue-600 rounded-full px-1.5 py-0.5 text-[10px] font-medium">start</span>}
+                                              {getStateName(t.from_state_id)} → {getStateName(t.to_state_id)}
+                                              {toState?.is_final && <span className="bg-red-100 text-red-500 rounded-full px-1.5 py-0.5 text-[10px] font-medium">end</span>}
+                                              {pendingDeleteTransition === t.id ? (
+                                                <button
+                                                  onClick={e => { e.stopPropagation(); handleDeleteTransition(t.id); setPendingDeleteTransition(null) }}
+                                                  className="ml-1 bg-red-500 text-white rounded-full px-1.5 h-4 flex items-center justify-center text-[10px] font-medium"
+                                                >Confirm?</button>
+                                              ) : (
+                                                <button
+                                                  onClick={e => { e.stopPropagation(); setPendingDeleteTransition(t.id) }}
+                                                  className="ml-1 bg-green-800 text-white rounded-full w-4 h-4 flex items-center justify-center hover:bg-red-500 transition-colors"
+                                                  style={{ fontSize: "13px", lineHeight: 1, paddingBottom: "1px" }}
+                                                  title="Delete transition"
+                                                >×</button>
+                                              )}
+                                            </span>
+                                          )
+                                        })}
+                                      </div>
                                     )}
-                                  </span>
+                                  </div>
                                 )
                               })}
                             </div>
