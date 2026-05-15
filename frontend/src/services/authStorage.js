@@ -22,8 +22,17 @@ export function setUsername(username) {
   sessionStorage.setItem("username", username)
 }
 
+export function getUserId() {
+  return sessionStorage.getItem("userId")
+}
+
+export function setUserId(id) {
+  sessionStorage.setItem("userId", id)
+}
+
 export function clearAuth() {
   sessionStorage.removeItem("token")
   sessionStorage.removeItem("role")
   sessionStorage.removeItem("username")
+  sessionStorage.removeItem("userId")
 }

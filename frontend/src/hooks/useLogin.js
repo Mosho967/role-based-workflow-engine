@@ -1,7 +1,7 @@
 import { loginUser } from '../api/auth';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { setToken, setRole, setUsername } from '../services/authStorage'
+import { setToken, setRole, setUsername, setUserId } from '../services/authStorage'
 
 export function useLogin() {
   const [email, setEmail] = useState('')
@@ -19,6 +19,7 @@ export function useLogin() {
       setToken(data.access_token)
       setRole(payload.role)
       setUsername(payload.username)
+      setUserId(payload.sub)
       const destination = payload.role === 'admin' ? '/admin' : payload.role === 'reviewer' ? '/reviewer' : '/dashboard'
       navigate('/splash', { state: { destination } })
     } catch (err) {
