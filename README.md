@@ -43,7 +43,7 @@ The project demonstrates backend-enforced RBAC, state-machine transition validat
   </tr>
   <tr>
     <td><img src="docs/screenshots/reviewer_dashboard.png"/></td>
-    <td><img src="docs/screenshots/admin_audit_logs.png"/></td>
+    <td><img src="docs/screenshots/preview-audit.png"/></td>
   </tr>
 </table>
 
@@ -55,9 +55,10 @@ The project demonstrates backend-enforced RBAC, state-machine transition validat
 - Visual workflow canvas showing the state machine as a graph
 - Users submit tasks that are automatically placed in the initial state
 - Role-enforced state transitions — only authorised roles can move a task forward
-- Full audit log of every state transition with timestamps
+- Full audit log of every state transition with timestamps, paginated per role
 - Admin user management: create and deactivate accounts
 - Dead-end state detection — the builder highlights states with no outgoing transitions
+- Real-time WebSocket notifications — bell icon with unread count, per-task read tracking persisted in localStorage, auto-reloads task list on incoming events
 
 **Cogsy — AI Workflow Assistant**
 - Integrated GPT-4o chat assistant for designing workflows from plain English descriptions
@@ -168,6 +169,5 @@ Tests use an isolated SQLite database and cover auth, workflows, states, tasks, 
 ## Roadmap
 
 - Deploy backend to Railway or Render, frontend to Vercel
-- Real-time task notifications via WebSockets
 - Multi-tenancy support
 - Mobile client with React Native + Expo
