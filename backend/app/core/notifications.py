@@ -24,6 +24,12 @@ class ConnectionManager:
 
     async def send(self, user_id: str, data: dict):
         stamped = {**data, "ts": int(time.time() * 1000)}
+        task_id = stamped.get("task_id")
+        if task_id:
+            self._history[user_id] = deque(
+                (n for n in self._history[user_id] if n.get("task_id") != task_id),
+                maxlen=MAX_NOTIFICATIONS,
+            )
         self._history[user_id].append(stamped)
         for ws in list(self._connections[user_id]):
             try:
