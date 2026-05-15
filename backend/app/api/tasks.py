@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.dependencies import get_current_user, get_db
+from app.core.notifications import manager
 from app.models.audit_log import AuditLog
 from app.models.user import User
 from app.schemas.audit_log import AuditLogRead
@@ -19,12 +20,22 @@ router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 
 @router.post("", response_model=TaskRead, status_code=201)
-def create(
+async def create(
     data: TaskCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return create_task(db, data, current_user.id)
+    task = create_task(db, data, current_user.id)
+    notification = {
+        "type": "new_task",
+        "task_id": str(task.id),
+        "task_title": task.title,
+        "submitted_by": current_user.username,
+        "message": f'New task "{task.title}" submitted by {current_user.username}',
+    }
+    await manager.broadcast_to_role("reviewer", notification)
+    await manager.broadcast_to_role("admin", notification)
+    return task
 
 
 @router.get("", response_model=list[TaskRead])
