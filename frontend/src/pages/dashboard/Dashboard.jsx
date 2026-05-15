@@ -2,6 +2,9 @@ import { useEffect, useState, Fragment } from "react"
 import { useDashboard } from "../../hooks/useDashboard"
 import { useNavigate } from "react-router-dom"
 import logo from "../../assets/logo.png"
+import NotificationBell from "../../components/NotificationBell"
+import { useNotifications } from "../../hooks/useNotifications"
+import { getUserId } from "../../services/authStorage"
 
 function DonutChart({ completed, needsAction, waiting, total }) {
   const r = 35
@@ -80,8 +83,10 @@ export default function Dashboard() {
     loadTransitions,
   } = useDashboard()
 
+  const { notifications, unread, markTaskRead, clearAll } = useNotifications(getUserId())
   const [showAllTasks, setShowAllTasks] = useState(false)
-  const [showAllActivity, setShowAllActivity] = useState(false)
+  const [taskFilter, setTaskFilter] = useState("all")
+  const [activityPage, setActivityPage] = useState(1)
   const [pending, setPending] = useState(null) // { taskId, toStateId, stateName }
   const [pendingComment, setPendingComment] = useState("")
   const navigate = useNavigate()
@@ -98,11 +103,21 @@ export default function Dashboard() {
     if (aHas !== bHas) return aHas ? -1 : 1
     return new Date(b.created_at) - new Date(a.created_at)
   })
-  const visibleTasks = showAllTasks ? sortedTasks : sortedTasks.slice(0, LIMIT)
+  const filteredTasks = sortedTasks.filter(t => {
+    const closed = isStateFinal(t.workflow_id, t.current_state_id)
+    const hasAction = getAvailableTransitions(t.workflow_id, t.current_state_id).length > 0
+    if (taskFilter === "closed") return closed
+    if (taskFilter === "needsAction") return !closed && hasAction
+    if (taskFilter === "waiting") return !closed && !hasAction
+    return true
+  })
+  const visibleTasks = showAllTasks ? filteredTasks : filteredTasks.slice(0, LIMIT)
   const allLogs = tasks.flatMap(task =>
     (auditLogs[task.id] || []).map(log => ({ ...log, task }))
   ).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-  const visibleLogs = showAllActivity ? allLogs : allLogs.slice(0, LIMIT)
+  const ACT_PAGE_SIZE = 10
+  const totalActivityPages = Math.ceil(allLogs.length / ACT_PAGE_SIZE)
+  const visibleLogs = allLogs.slice((activityPage - 1) * ACT_PAGE_SIZE, activityPage * ACT_PAGE_SIZE)
 
   const totalTasks = tasks.length
   const completedTasks = tasks.filter(t => isStateFinal(t.workflow_id, t.current_state_id)).length
@@ -126,9 +141,12 @@ export default function Dashboard() {
             <span className="text-sm font-medium text-gray-500">Hi, {username}</span>
           </>}
         </div>
-        <button onClick={handleLogout} className="text-sm font-bold text-green-900 hover:underline">
-          Logout
-        </button>
+        <div className="flex items-center gap-3">
+          <NotificationBell notifications={notifications} unread={unread} onMarkTaskRead={markTaskRead} onClearAll={clearAll} />
+          <button onClick={handleLogout} className="text-sm font-bold text-green-900 hover:underline">
+            Logout
+          </button>
+        </div>
       </div>
 
       <div className="max-w-6xl mx-auto py-8 px-4 space-y-6">
@@ -223,13 +241,29 @@ export default function Dashboard() {
           {/* Right column — tasks */}
           <div className="lg:col-span-3">
             <div className="bg-white rounded-2xl shadow p-5">
-              <div className="flex justify-between items-center mb-4">
+              <div className="flex justify-between items-center mb-3">
                 <h2 className="text-base font-semibold">My Tasks</h2>
-                {tasks.length > LIMIT && (
+                {filteredTasks.length > LIMIT && (
                   <button onClick={() => setShowAllTasks(prev => !prev)} className="text-sm text-green-600 hover:underline">
-                    {showAllTasks ? "Show less" : `View all ${tasks.length}`}
+                    {showAllTasks ? "Show less" : `View all ${filteredTasks.length}`}
                   </button>
                 )}
+              </div>
+              <div className="flex gap-2 mb-4 flex-wrap">
+                {[
+                  { key: "all", label: "All", count: tasks.length },
+                  { key: "needsAction", label: "Needs Action", count: needsActionTasks },
+                  { key: "waiting", label: "Waiting", count: waitingTasks },
+                  { key: "closed", label: "Closed", count: completedTasks },
+                ].map(f => (
+                  <button
+                    key={f.key}
+                    onClick={() => { setTaskFilter(f.key); setShowAllTasks(false) }}
+                    className={`text-xs font-medium px-3 py-1 rounded-full border transition-colors ${taskFilter === f.key ? "bg-green-600 text-white border-green-600" : "bg-white text-gray-500 border-gray-200 hover:border-green-400"}`}
+                  >
+                    {f.label} <span className="ml-1 opacity-70">{f.count}</span>
+                  </button>
+                ))}
               </div>
               {tasks.length === 0 ? (
                 <p className="text-gray-500 text-sm">No tasks yet.</p>
@@ -298,7 +332,7 @@ export default function Dashboard() {
                           )
                         })()}
                         <button
-                          onClick={() => navigate(`/tasks/${task.id}`)}
+                          onClick={() => { markTaskRead(task.id); navigate(`/tasks/${task.id}`) }}
                           className="text-xs text-green-700 hover:underline mb-2 inline-block"
                         >
                           View full detail →
@@ -361,35 +395,54 @@ export default function Dashboard() {
           <div className="bg-white rounded-2xl shadow p-5">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-base font-semibold">Activity</h2>
-              {allLogs.length > LIMIT && (
-                <button onClick={() => setShowAllActivity(prev => !prev)} className="text-sm text-green-600 hover:underline">
-                  {showAllActivity ? "Show less" : `View all ${allLogs.length}`}
-                </button>
-              )}
+              <span className="text-xs text-gray-400">{allLogs.length} entries</span>
             </div>
             {allLogs.length === 0 ? (
               <p className="text-gray-500 text-sm">No activity yet.</p>
             ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-gray-500 border-b">
-                    <th className="pb-2">Task</th>
-                    <th className="pb-2">From</th>
-                    <th className="pb-2">To</th>
-                    <th className="pb-2">When</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {visibleLogs.map(log => (
-                    <tr key={log.id} className="border-b last:border-0">
-                      <td className="py-2">{log.task.title}</td>
-                      <td className="py-2">{log.from_state_id ? getStateName(log.task.workflow_id, log.from_state_id) : "—"}</td>
-                      <td className="py-2">{getStateName(log.task.workflow_id, log.to_state_id)}</td>
-                      <td className="py-2 text-xs text-gray-400">{new Date(log.created_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</td>
+              <>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-gray-500 border-b">
+                      <th className="pb-2 font-medium">Task</th>
+                      <th className="pb-2 font-medium">From</th>
+                      <th className="pb-2 font-medium">To</th>
+                      <th className="pb-2 font-medium">When</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {visibleLogs.map(log => (
+                      <tr key={log.id} className="border-b last:border-0 hover:bg-gray-50">
+                        <td className="py-2 pr-3">{log.task.title}</td>
+                        <td className="py-2 pr-3">{log.from_state_id ? getStateName(log.task.workflow_id, log.from_state_id) : "—"}</td>
+                        <td className="py-2 pr-3">{getStateName(log.task.workflow_id, log.to_state_id)}</td>
+                        <td className="py-2 text-xs text-gray-400 whitespace-nowrap">{new Date(log.created_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {totalActivityPages > 1 && (
+                  <div className="flex items-center justify-center gap-1 mt-4">
+                    <button
+                      onClick={() => setActivityPage(p => Math.max(1, p - 1))}
+                      disabled={activityPage === 1}
+                      className="px-2 py-1 text-xs rounded border border-gray-200 text-gray-500 hover:border-green-400 disabled:opacity-30 disabled:cursor-not-allowed"
+                    >←</button>
+                    {Array.from({ length: totalActivityPages }, (_, i) => i + 1).map(p => (
+                      <button
+                        key={p}
+                        onClick={() => setActivityPage(p)}
+                        className={`px-2.5 py-1 text-xs rounded border transition-colors ${activityPage === p ? "bg-green-600 text-white border-green-600" : "border-gray-200 text-gray-500 hover:border-green-400"}`}
+                      >{p}</button>
+                    ))}
+                    <button
+                      onClick={() => setActivityPage(p => Math.min(totalActivityPages, p + 1))}
+                      disabled={activityPage === totalActivityPages}
+                      className="px-2 py-1 text-xs rounded border border-gray-200 text-gray-500 hover:border-green-400 disabled:opacity-30 disabled:cursor-not-allowed"
+                    >→</button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}

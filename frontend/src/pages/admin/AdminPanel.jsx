@@ -1,10 +1,12 @@
-import { useState } from "react"
+import { useState, Fragment } from "react"
 import { useAdmin } from "../../hooks/useAdmin"
-import { clearAuth, getUsername } from "../../services/authStorage"
+import { clearAuth, getUsername, getUserId } from "../../services/authStorage"
 import { useNavigate } from "react-router-dom"
 import logo from "../../assets/logo.png"
 import WorkflowCanvas from "../../components/WorkflowCanvas"
 import MascotChat from "../../components/MascotChat"
+import NotificationBell from "../../components/NotificationBell"
+import { useNotifications } from "../../hooks/useNotifications"
 
 const TABS = ["Workflow Builder", "Users", "Tasks", "Audit Logs"]
 const PRESET_STATES = ["Under Review", "In Progress", "Approved", "Rejected", "Changes Requested", "Completed", "Cancelled"]
@@ -19,7 +21,8 @@ export default function AdminPanel() {
   const [aiPrompt, setAiPrompt] = useState("")
   const [aiLoading, setAiLoading] = useState(false)
   const [showAllTasks, setShowAllTasks] = useState(false)
-  const [showAllLogs, setShowAllLogs] = useState(false)
+  const [taskFilter, setTaskFilter] = useState("all")
+  const [logsPage, setLogsPage] = useState(1)
   const [transitionWarning, setTransitionWarning] = useState(null)
   const [transitionBlock, setTransitionBlock] = useState(null)
   const [warningShakeKey, setWarningShakeKey] = useState(0)
@@ -53,9 +56,12 @@ export default function AdminPanel() {
     getStateNameForAuditLog,
     getWorkflowName,
     getAvailableAdminTransitions,
+    isStateFinal,
+    getOrderedStates,
   } = useAdmin()
 
   const adminUsername = getUsername()
+  const { notifications, unread, markTaskRead, clearAll } = useNotifications(getUserId())
 
   function handleLogout() {
     clearAuth()
@@ -76,9 +82,12 @@ export default function AdminPanel() {
             <span className="text-sm font-medium text-gray-500">Hi, {adminUsername}</span>
           </>}
         </div>
-        <button onClick={handleLogout} className="text-sm font-bold text-green-900 hover:underline">
-          Logout
-        </button>
+        <div className="flex items-center gap-3">
+          <NotificationBell notifications={notifications} unread={unread} onMarkTaskRead={markTaskRead} onClearAll={clearAll} />
+          <button onClick={handleLogout} className="text-sm font-bold text-green-900 hover:underline">
+            Logout
+          </button>
+        </div>
       </div>
 
       {/* Tab bar */}
@@ -592,101 +601,248 @@ export default function AdminPanel() {
         )}
 
         {/* Tasks */}
-        {activeTab === "Tasks" && (
-          <div className="bg-white rounded shadow p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold">All Tasks</h2>
-              {tasks.length > LIMIT && (
-                <button onClick={() => setShowAllTasks(prev => !prev)} className="text-sm text-green-600 hover:underline">
-                  {showAllTasks ? "Show less" : `View all ${tasks.length}`}
-                </button>
-              )}
-            </div>
-            {tasks.length === 0 ? (
-              <p className="text-gray-500 text-sm">No tasks in the system.</p>
-            ) : (
-              <div className="space-y-3">
-                {(showAllTasks ? tasks : tasks.slice(0, LIMIT)).map(task => {
-                  const available = getAvailableAdminTransitions(task.workflow_id, task.current_state_id)
-                  const adminTransitions = available.filter(t => t.required_role === "admin")
-                  const waitingFor = [...new Set(available.filter(t => t.required_role !== "admin").map(t => t.required_role))]
-                  const stateName = getStateNameFromMap(task.workflow_id, task.current_state_id)
-                  const stateKey = stateName.toLowerCase()
-                  const stateBadge = /approved|completed|done/.test(stateKey)
-                    ? "bg-green-100 text-green-700"
-                    : /rejected|cancelled|denied/.test(stateKey)
-                    ? "bg-red-100 text-red-700"
-                    : "bg-blue-100 text-blue-700"
-                  return (
-                    <div key={task.id} className="border rounded-2xl p-4">
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="font-medium">{task.title}</p>
-                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${stateBadge}`}>
-                          {stateName}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-500">Workflow: {getWorkflowName(task.workflow_id)}</p>
-                      <div className="mt-2 flex flex-wrap gap-2 items-center">
-                        {adminTransitions.map(t => (
-                          <button
-                            key={t.id}
-                            onClick={() => handleTriggerTransition(task.id, t.to_state_id)}
-                            className="text-sm bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
-                          >
-                            Move to {getStateNameFromMap(task.workflow_id, t.to_state_id)}
-                          </button>
-                        ))}
-                        {waitingFor.map(role => (
-                          <span key={role} className="text-xs font-medium px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">
-                            Waiting for {role}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )
-                })}
+        {activeTab === "Tasks" && (() => {
+          const totalTasks = tasks.length
+          const closedTasks = tasks.filter(t => isStateFinal(t.workflow_id, t.current_state_id)).length
+          const needsAdminTasks = tasks.filter(t => {
+            const avail = getAvailableAdminTransitions(t.workflow_id, t.current_state_id)
+            return avail.some(tr => tr.required_role === "admin")
+          }).length
+          const waitingTasks = totalTasks - closedTasks - needsAdminTasks
+
+          const sortedTasks = [...tasks].sort((a, b) => {
+            const aAdminAction = getAvailableAdminTransitions(a.workflow_id, a.current_state_id).some(t => t.required_role === "admin")
+            const bAdminAction = getAvailableAdminTransitions(b.workflow_id, b.current_state_id).some(t => t.required_role === "admin")
+            if (aAdminAction !== bAdminAction) return aAdminAction ? -1 : 1
+            return new Date(b.updated_at) - new Date(a.updated_at)
+          })
+
+          const filteredTasks = sortedTasks.filter(t => {
+            const closed = isStateFinal(t.workflow_id, t.current_state_id)
+            const needsAdmin = getAvailableAdminTransitions(t.workflow_id, t.current_state_id).some(tr => tr.required_role === "admin")
+            if (taskFilter === "closed") return closed
+            if (taskFilter === "needsAction") return !closed && needsAdmin
+            if (taskFilter === "waiting") return !closed && !needsAdmin
+            return true
+          })
+          const visibleTasks = showAllTasks ? filteredTasks : filteredTasks.slice(0, LIMIT)
+
+          return (
+            <div className="space-y-4">
+              {/* Stats */}
+              <div className="grid grid-cols-4 gap-4">
+                <div className="bg-white rounded-2xl shadow p-4 text-center">
+                  <p className="text-2xl font-bold text-gray-800">{totalTasks}</p>
+                  <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide">Total</p>
+                </div>
+                <div className="bg-white rounded-2xl shadow p-4 text-center">
+                  <p className="text-2xl font-bold text-red-500">{needsAdminTasks}</p>
+                  <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide">Needs You</p>
+                </div>
+                <div className="bg-white rounded-2xl shadow p-4 text-center">
+                  <p className="text-2xl font-bold text-amber-500">{waitingTasks}</p>
+                  <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide">Waiting</p>
+                </div>
+                <div className="bg-white rounded-2xl shadow p-4 text-center">
+                  <p className="text-2xl font-bold text-green-600">{closedTasks}</p>
+                  <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide">Closed</p>
+                </div>
               </div>
-            )}
-          </div>
-        )}
+
+              <div className="bg-white rounded-2xl shadow p-5">
+                <div className="flex justify-between items-center mb-3">
+                  <h2 className="text-base font-semibold">All Tasks</h2>
+                  {filteredTasks.length > LIMIT && (
+                    <button onClick={() => setShowAllTasks(prev => !prev)} className="text-sm text-green-600 hover:underline">
+                      {showAllTasks ? "Show less" : `View all ${filteredTasks.length}`}
+                    </button>
+                  )}
+                </div>
+
+                {/* Filter chips */}
+                <div className="flex gap-2 mb-4 flex-wrap">
+                  {[
+                    { key: "all", label: "All", count: totalTasks },
+                    { key: "needsAction", label: "Needs You", count: needsAdminTasks },
+                    { key: "waiting", label: "Waiting", count: waitingTasks },
+                    { key: "closed", label: "Closed", count: closedTasks },
+                  ].map(f => (
+                    <button
+                      key={f.key}
+                      onClick={() => { setTaskFilter(f.key); setShowAllTasks(false) }}
+                      className={`text-xs font-medium px-3 py-1 rounded-full border transition-colors ${taskFilter === f.key ? "bg-green-600 text-white border-green-600" : "bg-white text-gray-500 border-gray-200 hover:border-green-400"}`}
+                    >
+                      {f.label} <span className="ml-1 opacity-70">{f.count}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {tasks.length === 0 ? (
+                  <p className="text-gray-500 text-sm">No tasks in the system.</p>
+                ) : (
+                  <div className="space-y-4">
+                    {visibleTasks.map(task => {
+                      const available = getAvailableAdminTransitions(task.workflow_id, task.current_state_id)
+                      const adminTransitions = available.filter(t => t.required_role === "admin")
+                      const waitingFor = [...new Set(available.filter(t => t.required_role !== "admin").map(t => t.required_role))]
+                      const isClosed = isStateFinal(task.workflow_id, task.current_state_id)
+                      const stateName = getStateNameFromMap(task.workflow_id, task.current_state_id)
+                      const stateKey = stateName.toLowerCase()
+                      const stateBadge = /approved|completed|done/.test(stateKey)
+                        ? "bg-green-100 text-green-700"
+                        : /rejected|cancelled|denied/.test(stateKey)
+                        ? "bg-red-100 text-red-700"
+                        : adminTransitions.length > 0
+                        ? "bg-red-100 text-red-700"
+                        : "bg-amber-100 text-amber-700"
+                      const ordered = getOrderedStates(task.workflow_id)
+                      const currentIndex = ordered.findIndex(s => s.id === task.current_state_id)
+
+                      return (
+                        <div key={task.id} className={`border rounded-2xl p-4 ${adminTransitions.length > 0 ? "border-red-200 bg-red-50/20" : ""}`}>
+                          <div className="flex items-start justify-between mb-1 gap-2">
+                            <p className="font-medium text-sm">{task.title}</p>
+                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${stateBadge}`}>
+                              {stateName}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-3 text-xs text-gray-400 mb-2">
+                            <span>{getWorkflowName(task.workflow_id)}</span>
+                            {task.created_by_username && (
+                              <span>· Submitted by <span className="font-medium text-gray-600">{task.created_by_username}</span></span>
+                            )}
+                            <span>· {new Date(task.created_at).toLocaleDateString(undefined, { dateStyle: "medium" })}</span>
+                          </div>
+
+                          {task.description && (
+                            <p className="text-xs text-gray-600 mb-3 leading-relaxed">{task.description}</p>
+                          )}
+
+                          {/* Stepper */}
+                          {ordered.length >= 2 && (
+                            <div className="flex items-start mb-3">
+                              {ordered.map((state, i) => {
+                                const isPast = i < currentIndex
+                                const isCurrent = i === currentIndex
+                                return (
+                                  <Fragment key={state.id}>
+                                    <div className="flex flex-col items-center" style={{ minWidth: 0 }}>
+                                      <div className={`w-2.5 h-2.5 rounded-full border-2 flex-shrink-0 ${
+                                        isPast ? "bg-green-500 border-green-500" :
+                                        isCurrent ? "bg-green-600 border-green-600 ring-2 ring-green-200" :
+                                        "bg-white border-gray-300"
+                                      }`} />
+                                      <span className={`text-[9px] mt-1 text-center leading-tight max-w-[48px] truncate ${
+                                        isCurrent ? "text-green-700 font-semibold" : "text-gray-400"
+                                      }`}>{state.name}</span>
+                                    </div>
+                                    {i < ordered.length - 1 && (
+                                      <div className={`flex-1 h-0.5 mt-1 mx-0.5 ${isPast ? "bg-green-400" : "bg-gray-200"}`} />
+                                    )}
+                                  </Fragment>
+                                )
+                              })}
+                            </div>
+                          )}
+
+                          <button
+                            onClick={() => { markTaskRead(task.id); navigate(`/tasks/${task.id}`) }}
+                            className="text-xs text-green-700 hover:underline mb-2 inline-block"
+                          >
+                            View full detail →
+                          </button>
+
+                          <div className="flex flex-wrap gap-2 mt-1 items-center">
+                            {adminTransitions.map(t => (
+                              <button
+                                key={t.id}
+                                onClick={() => handleTriggerTransition(task.id, t.to_state_id)}
+                                className="text-xs bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 font-medium"
+                              >
+                                Move to {getStateNameFromMap(task.workflow_id, t.to_state_id)}
+                              </button>
+                            ))}
+                            {waitingFor.map(role => (
+                              <span key={role} className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                                Waiting for {role}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          )
+        })()}
 
         {/* Audit Logs */}
-        {activeTab === "Audit Logs" && (
-          <div className="bg-white rounded shadow p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold">Audit Logs</h2>
-              {auditLogs.length > LIMIT && (
-                <button onClick={() => setShowAllLogs(prev => !prev)} className="text-sm text-green-600 hover:underline">
-                  {showAllLogs ? "Show less" : `View all ${auditLogs.length}`}
-                </button>
+        {activeTab === "Audit Logs" && (() => {
+          const LOG_PAGE_SIZE = 10
+          const totalLogPages = Math.ceil(auditLogs.length / LOG_PAGE_SIZE)
+          const logStart = (logsPage - 1) * LOG_PAGE_SIZE
+          const visibleLogs = auditLogs.slice(logStart, logStart + LOG_PAGE_SIZE)
+          return (
+            <div className="bg-white rounded-2xl shadow p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold">Audit Logs</h2>
+                <span className="text-xs text-gray-400">{auditLogs.length} entries</span>
+              </div>
+              {auditLogs.length === 0 ? (
+                <p className="text-gray-500 text-sm">No audit logs yet.</p>
+              ) : (
+                <>
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-gray-500 border-b">
+                        <th className="pb-2 font-medium">Task</th>
+                        <th className="pb-2 font-medium">By</th>
+                        <th className="pb-2 font-medium">From</th>
+                        <th className="pb-2 font-medium">To</th>
+                        <th className="pb-2 font-medium">When</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {visibleLogs.map(log => (
+                        <tr key={log.id} className="border-b last:border-0 hover:bg-gray-50">
+                          <td className="py-2 pr-3">{tasks.find(t => t.id === log.task_id)?.title || log.task_id.slice(0, 8) + "…"}</td>
+                          <td className="py-2 pr-3 text-gray-600">{log.performed_by_username || "—"}</td>
+                          <td className="py-2 pr-3">{getStateNameForAuditLog(log.task_id, log.from_state_id)}</td>
+                          <td className="py-2 pr-3">{getStateNameForAuditLog(log.task_id, log.to_state_id)}</td>
+                          <td className="py-2 text-xs text-gray-400 whitespace-nowrap">{new Date(log.created_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {totalLogPages > 1 && (
+                    <div className="flex items-center justify-center gap-1 mt-4">
+                      <button
+                        onClick={() => setLogsPage(p => Math.max(1, p - 1))}
+                        disabled={logsPage === 1}
+                        className="px-2 py-1 text-xs rounded border border-gray-200 text-gray-500 hover:border-green-400 disabled:opacity-30 disabled:cursor-not-allowed"
+                      >←</button>
+                      {Array.from({ length: totalLogPages }, (_, i) => i + 1).map(p => (
+                        <button
+                          key={p}
+                          onClick={() => setLogsPage(p)}
+                          className={`px-2.5 py-1 text-xs rounded border transition-colors ${logsPage === p ? "bg-green-600 text-white border-green-600" : "border-gray-200 text-gray-500 hover:border-green-400"}`}
+                        >{p}</button>
+                      ))}
+                      <button
+                        onClick={() => setLogsPage(p => Math.min(totalLogPages, p + 1))}
+                        disabled={logsPage === totalLogPages}
+                        className="px-2 py-1 text-xs rounded border border-gray-200 text-gray-500 hover:border-green-400 disabled:opacity-30 disabled:cursor-not-allowed"
+                      >→</button>
+                    </div>
+                  )}
+                </>
               )}
             </div>
-            {auditLogs.length === 0 ? (
-              <p className="text-gray-500 text-sm">No audit logs yet.</p>
-            ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-gray-500 border-b">
-                    <th className="pb-2">Task</th>
-                    <th className="pb-2">From</th>
-                    <th className="pb-2">To</th>
-                    <th className="pb-2">When</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(showAllLogs ? auditLogs : auditLogs.slice(0, LIMIT)).map(log => (
-                    <tr key={log.id} className="border-b last:border-0">
-                      <td className="py-2">{tasks.find(t => t.id === log.task_id)?.title || log.task_id.slice(0, 8) + "…"}</td>
-                      <td className="py-2">{getStateNameForAuditLog(log.task_id, log.from_state_id)}</td>
-                      <td className="py-2">{getStateNameForAuditLog(log.task_id, log.to_state_id)}</td>
-                      <td className="py-2 text-xs text-gray-400">{new Date(log.created_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        )}
+          )
+        })()}
 
       </div>
 

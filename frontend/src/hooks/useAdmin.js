@@ -234,6 +234,18 @@ export function useAdmin() {
     )
   }
 
+  function isStateFinal(workflowId, stateId) {
+    return statesMap[workflowId]?.find(s => s.id === stateId)?.is_final ?? false
+  }
+
+  function getOrderedStates(workflowId) {
+    const s = statesMap[workflowId] || []
+    const initial = s.filter(x => x.is_initial)
+    const final_ = s.filter(x => x.is_final)
+    const middle = s.filter(x => !x.is_initial && !x.is_final)
+    return [...initial, ...middle, ...final_]
+  }
+
   return {
     workflows, selectedWorkflow, states, transitions,
     tasks, users, auditLogs, error,
@@ -259,5 +271,7 @@ export function useAdmin() {
     getStateNameForAuditLog,
     getWorkflowName,
     getAvailableAdminTransitions,
+    isStateFinal,
+    getOrderedStates,
   }
 }

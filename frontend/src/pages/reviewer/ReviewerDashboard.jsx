@@ -2,6 +2,9 @@ import { useState, Fragment } from "react"
 import { useReviewer } from "../../hooks/useReviewer"
 import { useNavigate } from "react-router-dom"
 import logo from "../../assets/logo.png"
+import NotificationBell from "../../components/NotificationBell"
+import { useNotifications } from "../../hooks/useNotifications"
+import { getUserId } from "../../services/authStorage"
 
 export default function ReviewerDashboard() {
   const {
@@ -22,6 +25,10 @@ export default function ReviewerDashboard() {
   } = useReviewer()
 
   const [pending, setPending] = useState(null)
+  const [taskFilter, setTaskFilter] = useState("all")
+  const [activityPage, setActivityPage] = useState(1)
+  const ACT_PAGE_SIZE = 10
+  const { notifications, unread, markTaskRead, clearAll } = useNotifications(getUserId())
   const [comment, setComment] = useState("")
   const navigate = useNavigate()
 
@@ -34,6 +41,16 @@ export default function ReviewerDashboard() {
 
   const inQueue = tasks.filter((t) => getAvailableTransitions(t.workflow_id, t.current_state_id).length > 0).length
   const completed = tasks.filter((t) => isStateFinal(t.workflow_id, t.current_state_id)).length
+  const waiting = tasks.length - inQueue - completed
+
+  const filteredTasks = sortedTasks.filter(t => {
+    const closed = isStateFinal(t.workflow_id, t.current_state_id)
+    const hasAction = getAvailableTransitions(t.workflow_id, t.current_state_id).length > 0
+    if (taskFilter === "closed") return closed
+    if (taskFilter === "inQueue") return !closed && hasAction
+    if (taskFilter === "waiting") return !closed && !hasAction
+    return true
+  })
 
   function handleActionClick(taskId, toStateId, stateName) {
     setPending({ taskId, toStateId, stateName })
@@ -63,10 +80,8 @@ export default function ReviewerDashboard() {
             <span className="text-sm font-medium text-gray-500">Hi, {username}</span>
           </>}
         </div>
-        <div className="flex items-center gap-4">
-          <button onClick={loadData} className="text-sm text-green-700 hover:underline">
-            Refresh
-          </button>
+        <div className="flex items-center gap-3">
+          <NotificationBell notifications={notifications} unread={unread} onMarkTaskRead={markTaskRead} onClearAll={clearAll} />
           <button onClick={handleLogout} className="text-sm font-bold text-green-900 hover:underline">
             Logout
           </button>
@@ -77,7 +92,7 @@ export default function ReviewerDashboard() {
         {error && <p className="text-red-500 text-sm">{error}</p>}
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-4 gap-4">
           <div className="bg-white rounded-2xl shadow p-4 text-center">
             <p className="text-3xl font-bold text-gray-800">{tasks.length}</p>
             <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide">Total</p>
@@ -87,6 +102,10 @@ export default function ReviewerDashboard() {
             <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide">In Queue</p>
           </div>
           <div className="bg-white rounded-2xl shadow p-4 text-center">
+            <p className="text-3xl font-bold text-blue-500">{waiting}</p>
+            <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide">Waiting</p>
+          </div>
+          <div className="bg-white rounded-2xl shadow p-4 text-center">
             <p className="text-3xl font-bold text-green-600">{completed}</p>
             <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide">Completed</p>
           </div>
@@ -94,20 +113,40 @@ export default function ReviewerDashboard() {
 
         {/* Task Queue */}
         <div className="bg-white rounded-2xl shadow p-5">
-          <h2 className="text-base font-semibold mb-4">
-            Review Queue
-            {inQueue > 0 && (
-              <span className="ml-2 text-xs bg-amber-100 text-amber-700 font-medium px-2 py-0.5 rounded-full">
-                {inQueue} awaiting
-              </span>
-            )}
-          </h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-base font-semibold">
+              Review Queue
+              {inQueue > 0 && (
+                <span className="ml-2 text-xs bg-amber-100 text-amber-700 font-medium px-2 py-0.5 rounded-full">
+                  {inQueue} awaiting
+                </span>
+              )}
+            </h2>
+          </div>
+
+          {/* Filter chips */}
+          <div className="flex gap-2 mb-4 flex-wrap">
+            {[
+              { key: "all", label: "All", count: tasks.length },
+              { key: "inQueue", label: "In Queue", count: inQueue },
+              { key: "waiting", label: "Waiting", count: waiting },
+              { key: "closed", label: "Closed", count: completed },
+            ].map(f => (
+              <button
+                key={f.key}
+                onClick={() => setTaskFilter(f.key)}
+                className={`text-xs font-medium px-3 py-1 rounded-full border transition-colors ${taskFilter === f.key ? "bg-green-600 text-white border-green-600" : "bg-white text-gray-500 border-gray-200 hover:border-green-400"}`}
+              >
+                {f.label} <span className="ml-1 opacity-70">{f.count}</span>
+              </button>
+            ))}
+          </div>
 
           {tasks.length === 0 ? (
             <p className="text-gray-500 text-sm">No tasks yet.</p>
           ) : (
             <div className="space-y-4">
-              {sortedTasks.map((task) => {
+              {filteredTasks.map((task) => {
                 const available = getAvailableTransitions(task.workflow_id, task.current_state_id)
                 const stateName = getStateName(task.workflow_id, task.current_state_id)
                 const stateKey = stateName.toLowerCase()
@@ -191,7 +230,7 @@ export default function ReviewerDashboard() {
 
                     {/* View detail */}
                     <button
-                      onClick={() => navigate(`/tasks/${task.id}`)}
+                      onClick={() => { markTaskRead(task.id); navigate(`/tasks/${task.id}`) }}
                       className="text-xs text-green-700 hover:underline mb-2 inline-block"
                     >
                       View full detail →
@@ -248,6 +287,61 @@ export default function ReviewerDashboard() {
             </div>
           )}
         </div>
+
+        {/* My Activity */}
+        {(() => {
+          const myLogs = Object.values(auditLogs)
+            .flat()
+            .filter(l => l.performed_by_username === username && l.from_state_id)
+            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+          const totalPages = Math.ceil(myLogs.length / ACT_PAGE_SIZE)
+          const visible = myLogs.slice((activityPage - 1) * ACT_PAGE_SIZE, activityPage * ACT_PAGE_SIZE)
+          if (myLogs.length === 0) return null
+          return (
+            <div className="bg-white rounded-2xl shadow p-5">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-base font-semibold">My Activity</h2>
+                <span className="text-xs text-gray-400">{myLogs.length} actions</span>
+              </div>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-gray-500 border-b">
+                    <th className="pb-2 font-medium">Task</th>
+                    <th className="pb-2 font-medium">From</th>
+                    <th className="pb-2 font-medium">To</th>
+                    <th className="pb-2 font-medium">When</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visible.map(log => {
+                    const task = tasks.find(t => t.id === log.task_id)
+                    return (
+                      <tr key={log.id} className="border-b last:border-0 hover:bg-gray-50">
+                        <td className="py-2 pr-3">{task?.title || "—"}</td>
+                        <td className="py-2 pr-3">{log.from_state_id ? getStateName(task?.workflow_id, log.from_state_id) : "—"}</td>
+                        <td className="py-2 pr-3">{getStateName(task?.workflow_id, log.to_state_id)}</td>
+                        <td className="py-2 text-xs text-gray-400 whitespace-nowrap">{new Date(log.created_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-1 mt-4">
+                  <button onClick={() => setActivityPage(p => Math.max(1, p - 1))} disabled={activityPage === 1}
+                    className="px-2 py-1 text-xs rounded border border-gray-200 text-gray-500 hover:border-green-400 disabled:opacity-30 disabled:cursor-not-allowed">←</button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                    <button key={p} onClick={() => setActivityPage(p)}
+                      className={`px-2.5 py-1 text-xs rounded border transition-colors ${activityPage === p ? "bg-green-600 text-white border-green-600" : "border-gray-200 text-gray-500 hover:border-green-400"}`}
+                    >{p}</button>
+                  ))}
+                  <button onClick={() => setActivityPage(p => Math.min(totalPages, p + 1))} disabled={activityPage === totalPages}
+                    className="px-2 py-1 text-xs rounded border border-gray-200 text-gray-500 hover:border-green-400 disabled:opacity-30 disabled:cursor-not-allowed">→</button>
+                </div>
+              )}
+            </div>
+          )
+        })()}
       </div>
     </div>
   )
