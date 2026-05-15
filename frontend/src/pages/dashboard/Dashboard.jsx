@@ -81,9 +81,10 @@ export default function Dashboard() {
     getOrderedStates,
     handleDeleteTask,
     loadTransitions,
+    loadData,
   } = useDashboard()
 
-  const { notifications, unread, markTaskRead, clearAll } = useNotifications(getUserId())
+  const { notifications, unread, markTaskRead, clearAll } = useNotifications(getUserId(), () => loadData())
   const [showAllTasks, setShowAllTasks] = useState(false)
   const [taskFilter, setTaskFilter] = useState("all")
   const [activityPage, setActivityPage] = useState(1)

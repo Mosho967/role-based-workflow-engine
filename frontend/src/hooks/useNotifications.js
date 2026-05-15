@@ -14,10 +14,12 @@ function saveReadSet(userId, set) {
   localStorage.setItem(readKey(userId), JSON.stringify([...set].slice(-100)))
 }
 
-export function useNotifications(userId) {
+export function useNotifications(userId, onMessage) {
   const [notifications, setNotifications] = useState([])
   const [unread, setUnread] = useState(0)
   const wsRef = useRef(null)
+  const onMessageRef = useRef(onMessage)
+  useEffect(() => { onMessageRef.current = onMessage }, [onMessage])
 
   useEffect(() => {
     if (!userId) return
@@ -37,6 +39,7 @@ export function useNotifications(userId) {
         return updated.slice(0, MAX)
       })
       if (!isRead) setUnread(prev => prev + 1)
+      if (!isRead && onMessageRef.current) onMessageRef.current(data)
     }
 
     ws.onerror = () => {}

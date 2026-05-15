@@ -195,5 +195,6 @@ export function useDashboard() {
     getOrderedStates,
     handleDeleteTask,
     loadTransitions,
+    loadData,
   }
 }

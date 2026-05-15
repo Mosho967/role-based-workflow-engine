@@ -58,10 +58,11 @@ export default function AdminPanel() {
     getAvailableAdminTransitions,
     isStateFinal,
     getOrderedStates,
+    loadData,
   } = useAdmin()
 
   const adminUsername = getUsername()
-  const { notifications, unread, markTaskRead, clearAll } = useNotifications(getUserId())
+  const { notifications, unread, markTaskRead, clearAll } = useNotifications(getUserId(), () => loadData())
 
   function handleLogout() {
     clearAuth()

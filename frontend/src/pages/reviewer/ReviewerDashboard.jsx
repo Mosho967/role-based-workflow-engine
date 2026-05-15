@@ -28,7 +28,7 @@ export default function ReviewerDashboard() {
   const [taskFilter, setTaskFilter] = useState("all")
   const [activityPage, setActivityPage] = useState(1)
   const ACT_PAGE_SIZE = 10
-  const { notifications, unread, markTaskRead, clearAll } = useNotifications(getUserId())
+  const { notifications, unread, markTaskRead, clearAll } = useNotifications(getUserId(), () => loadData())
   const [comment, setComment] = useState("")
   const navigate = useNavigate()
 

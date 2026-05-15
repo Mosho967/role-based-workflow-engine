@@ -273,5 +273,6 @@ export function useAdmin() {
     getAvailableAdminTransitions,
     isStateFinal,
     getOrderedStates,
+    loadData,
   }
 }
