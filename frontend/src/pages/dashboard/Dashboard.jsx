@@ -1,4 +1,4 @@
-import { useEffect, useState, Fragment } from "react"
+import { useEffect, useState, Fragment, useRef } from "react"
 import { useDashboard } from "../../hooks/useDashboard"
 import { useNavigate } from "react-router-dom"
 import logo from "../../assets/logo.png"
@@ -84,7 +84,11 @@ export default function Dashboard() {
     loadData,
   } = useDashboard()
 
-  const { notifications, unread, markTaskRead, clearAll } = useNotifications(getUserId(), () => loadData())
+  const reloadRef = useRef(null)
+  const { notifications, unread, markTaskRead, clearAll } = useNotifications(getUserId(), () => {
+    clearTimeout(reloadRef.current)
+    reloadRef.current = setTimeout(() => loadData(), 300)
+  })
   const [showAllTasks, setShowAllTasks] = useState(false)
   const [taskFilter, setTaskFilter] = useState("all")
   const [activityPage, setActivityPage] = useState(1)

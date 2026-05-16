@@ -1,4 +1,4 @@
-import { useState, Fragment } from "react"
+import { useState, Fragment, useRef } from "react"
 import { useReviewer } from "../../hooks/useReviewer"
 import { useNavigate } from "react-router-dom"
 import logo from "../../assets/logo.png"
@@ -28,7 +28,11 @@ export default function ReviewerDashboard() {
   const [taskFilter, setTaskFilter] = useState("all")
   const [activityPage, setActivityPage] = useState(1)
   const ACT_PAGE_SIZE = 10
-  const { notifications, unread, markTaskRead, clearAll } = useNotifications(getUserId(), () => loadData())
+  const reloadRef = useRef(null)
+  const { notifications, unread, markTaskRead, clearAll } = useNotifications(getUserId(), () => {
+    clearTimeout(reloadRef.current)
+    reloadRef.current = setTimeout(() => loadData(), 300)
+  })
   const [comment, setComment] = useState("")
   const navigate = useNavigate()
 

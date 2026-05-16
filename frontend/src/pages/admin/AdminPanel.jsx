@@ -1,4 +1,4 @@
-import { useState, Fragment } from "react"
+import { useState, Fragment, useRef } from "react"
 import { useAdmin } from "../../hooks/useAdmin"
 import { clearAuth, getUsername, getUserId } from "../../services/authStorage"
 import { useNavigate } from "react-router-dom"
@@ -62,7 +62,11 @@ export default function AdminPanel() {
   } = useAdmin()
 
   const adminUsername = getUsername()
-  const { notifications, unread, markTaskRead, clearAll } = useNotifications(getUserId(), () => loadData())
+  const reloadRef = useRef(null)
+  const { notifications, unread, markTaskRead, clearAll } = useNotifications(getUserId(), () => {
+    clearTimeout(reloadRef.current)
+    reloadRef.current = setTimeout(() => loadData(), 300)
+  })
 
   function handleLogout() {
     clearAuth()
