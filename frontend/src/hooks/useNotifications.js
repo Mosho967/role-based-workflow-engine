@@ -52,15 +52,16 @@ export function useNotifications(userId, onMessage) {
     if (!taskId) return
     const readSet = getReadSet(userId)
     let delta = 0
-    setNotifications(prev => prev.map(n => {
+    notifications.forEach(n => {
       if (n.task_id === taskId && !n.read) {
         readSet.add(n.id)
         delta++
-        return { ...n, read: true }
       }
-      return n
-    }))
+    })
     saveReadSet(userId, readSet)
+    setNotifications(prev => prev.map(n =>
+      n.task_id === taskId && !n.read ? { ...n, read: true } : n
+    ))
     setUnread(prev => Math.max(0, prev - delta))
   }
 
