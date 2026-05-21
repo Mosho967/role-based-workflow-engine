@@ -1,6 +1,7 @@
 import uuid
 
 from fastapi import HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models.state import State
@@ -95,6 +96,11 @@ def add_transition(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="from_state not found in this workflow"
         )
+    if from_state.is_final:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot add a transition from a final state"
+        )
 
     to_state = db.query(State).filter(
         State.id == data.to_state_id,
@@ -106,6 +112,18 @@ def add_transition(
             detail="to_state not found in this workflow"
         )
 
+    existing = db.query(Transition).filter(
+        Transition.workflow_id == workflow.id,
+        Transition.from_state_id == data.from_state_id,
+        Transition.to_state_id == data.to_state_id,
+        Transition.required_role == data.required_role,
+    ).first()
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This transition already exists"
+        )
+
     transition = Transition(
         workflow_id=workflow.id,
         from_state_id=data.from_state_id,
@@ -113,7 +131,14 @@ def add_transition(
         required_role=data.required_role,
     )
     db.add(transition)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This transition already exists"
+        )
     db.refresh(transition)
     return transition
 
@@ -125,6 +150,7 @@ def list_transitions(db: Session, workflow_id: uuid.UUID) -> list[Transition]:
 
 def delete_state(db: Session, workflow_id: uuid.UUID, state_id: uuid.UUID) -> None:
     from app.models.task import Task
+    from app.models.audit_log import AuditLog
     get_workflow(db, workflow_id)
     state = db.query(State).filter(State.id == state_id, State.workflow_id == workflow_id).first()
     if not state:
@@ -135,10 +161,30 @@ def delete_state(db: Session, workflow_id: uuid.UUID, state_id: uuid.UUID) -> No
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot delete state — a task is currently in this state"
         )
+    audit_ref = db.query(AuditLog).filter(AuditLog.to_state_id == state_id).first()
+    if audit_ref:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete state — it is referenced in audit history"
+        )
     db.query(Transition).filter(
         (Transition.from_state_id == state_id) | (Transition.to_state_id == state_id)
     ).delete()
     db.delete(state)
+    db.commit()
+
+
+def clear_workflow(db: Session, workflow_id: uuid.UUID) -> None:
+    from app.models.task import Task
+    workflow = get_workflow(db, workflow_id)
+    in_use = db.query(Task).filter(Task.workflow_id == workflow.id).first()
+    if in_use:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot clear — this workflow already has tasks assigned"
+        )
+    db.query(Transition).filter(Transition.workflow_id == workflow.id).delete()
+    db.query(State).filter(State.workflow_id == workflow.id).delete()
     db.commit()
 
 
