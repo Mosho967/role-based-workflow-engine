@@ -4,6 +4,7 @@ import { fetchTasks } from "../api/tasks"
 import { fetchWorkflows, fetchStates, fetchTransitions, triggerTransition } from "../api/workflows"
 import { fetchAuditLogsForTask, fetchUsers } from "../api/admin"
 import { clearAuth, getRole, getUsername } from "../services/authStorage"
+import { getStateName as wfGetStateName, isStateFinal as wfIsStateFinal, getAvailableTransitions as wfGetAvailableTransitions, getOrderedStates as wfGetOrderedStates } from "../utils/workflowUtils"
 
 export function useReviewer() {
   const [tasks, setTasks] = useState([])
@@ -86,7 +87,7 @@ export function useReviewer() {
   }
 
   function getStateName(workflowId, stateId) {
-    return states[workflowId]?.find((s) => s.id === stateId)?.name || "Unknown"
+    return wfGetStateName(states[workflowId] || [], stateId)
   }
 
   function getWorkflowName(workflowId) {
@@ -94,34 +95,15 @@ export function useReviewer() {
   }
 
   function isStateFinal(workflowId, stateId) {
-    return states[workflowId]?.find((s) => s.id === stateId)?.is_final ?? false
+    return wfIsStateFinal(states[workflowId] || [], stateId)
   }
 
   function getAvailableTransitions(workflowId, currentStateId) {
-    if (isStateFinal(workflowId, currentStateId)) return []
-    return (transitions[workflowId] || []).filter(
-      (t) => t.from_state_id === currentStateId && t.required_role === "reviewer"
-    )
+    return wfGetAvailableTransitions(transitions[workflowId] || [], states[workflowId] || [], currentStateId, "reviewer")
   }
 
   function getOrderedStates(workflowId) {
-    const wfStates = states[workflowId] || []
-    const wfTransitions = transitions[workflowId] || []
-    const initial = wfStates.find((s) => s.is_initial)
-    if (!initial) return wfStates
-    const ordered = [initial]
-    const visited = new Set([initial.id])
-    let current = initial
-    while (true) {
-      const next = wfTransitions.find((t) => t.from_state_id === current.id && !visited.has(t.to_state_id))
-      if (!next) break
-      const nextState = wfStates.find((s) => s.id === next.to_state_id)
-      if (!nextState) break
-      ordered.push(nextState)
-      visited.add(nextState.id)
-      current = nextState
-    }
-    return ordered
+    return wfGetOrderedStates(states[workflowId] || [], transitions[workflowId] || [])
   }
 
   function getSubmitterName(userId) {

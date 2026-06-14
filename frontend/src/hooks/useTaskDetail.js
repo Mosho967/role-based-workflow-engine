@@ -4,6 +4,7 @@ import { fetchTask, sendComment } from "../api/tasks"
 import { fetchStates, fetchTransitions, triggerTransition } from "../api/workflows"
 import { fetchAuditLogsForTask, fetchUsers } from "../api/admin"
 import { getRole } from "../services/authStorage"
+import { getStateName as wfGetStateName, isStateFinal as wfIsStateFinal, getAvailableTransitions as wfGetAvailableTransitions, getOrderedStates as wfGetOrderedStates } from "../utils/workflowUtils"
 
 export function useTaskDetail(taskId) {
   const [task, setTask] = useState(null)
@@ -65,37 +66,20 @@ export function useTaskDetail(taskId) {
   }
 
   function getStateName(stateId) {
-    return states.find((s) => s.id === stateId)?.name || "Unknown"
+    return wfGetStateName(states, stateId)
   }
 
   function isStateFinal(stateId) {
-    return states.find((s) => s.id === stateId)?.is_final ?? false
+    return wfIsStateFinal(states, stateId)
   }
 
   function getAvailableTransitions() {
     if (!task) return []
-    if (isStateFinal(task.current_state_id)) return []
-    return transitions.filter(
-      (t) => t.from_state_id === task.current_state_id && t.required_role === role
-    )
+    return wfGetAvailableTransitions(transitions, states, task.current_state_id, role)
   }
 
   function getOrderedStates() {
-    const initial = states.find((s) => s.is_initial)
-    if (!initial) return states
-    const ordered = [initial]
-    const visited = new Set([initial.id])
-    let current = initial
-    while (true) {
-      const next = transitions.find((t) => t.from_state_id === current.id && !visited.has(t.to_state_id))
-      if (!next) break
-      const nextState = states.find((s) => s.id === next.to_state_id)
-      if (!nextState) break
-      ordered.push(nextState)
-      visited.add(nextState.id)
-      current = nextState
-    }
-    return ordered
+    return wfGetOrderedStates(states, transitions)
   }
 
   async function handleSendComment(comment) {

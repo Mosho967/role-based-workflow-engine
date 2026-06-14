@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { isStateFinal as wfIsStateFinal } from "../utils/workflowUtils"
 import { fetchAllAuditLogs, fetchUsers, createUser as apiCreateUser, deactivateUser as apiDeactivateUser } from "../api/admin"
 import { fetchWorkflows, createWorkflow as apiCreateWorkflow, fetchStates, fetchTransitions, createState as apiCreateState, createTransition as apiCreateTransition, deleteState as apiDeleteState, deleteTransition as apiDeleteTransition, triggerTransition, toggleStateFinal as apiToggleStateFinal, clearWorkflow as apiClearWorkflow } from "../api/workflows"
 import { fetchTasks } from "../api/tasks"
@@ -235,7 +236,7 @@ export function useAdmin() {
   }
 
   function isStateFinal(workflowId, stateId) {
-    return statesMap[workflowId]?.find(s => s.id === stateId)?.is_final ?? false
+    return wfIsStateFinal(statesMap[workflowId] || [], stateId)
   }
 
   function getOrderedStates(workflowId) {
